@@ -105,6 +105,12 @@
     </div>
   </section>
 
+  <section class="card" aria-label="mBlock へ">
+    <h2>mBlock へ</h2>
+    <div class="row"><button id="bExport" type="button">mBlock 用に書き出す (.sb3)</button></div>
+    <p class="help" style="margin-top:8px">書き出したファイルを、mBlock の「ファイル → コンピューターから開く」で開くと、同じブロックが mBot2 のデバイスに並びます。</p>
+  </section>
+
   <section class="card" aria-label="課題">
     <h2>課題: 色マスを順に踏もう</h2>
     <div class="chips" id="chips" aria-label="踏む順番"></div>
@@ -711,6 +717,152 @@ async function runBlock(e, c){
   }
 }
 
+/* ================= mBlock 用に書き出す (.sb3) =================
+   mBlock が実際に保存したファイル (mBot2 のデバイスにブロックを置いたもの) と同じ形で書き出します。 */
+const MB = {
+  stageSvg: '<svg width="2" height="2" viewBox="-1 -1 2 2" xmlns="http://www.w3.org/2000/svg"/>',
+  deviceSvg: '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2" viewBox="-0.5 -0.5 2 2"><path fill="none" d="M0 0h1v1H0z" stroke-width="1"/></svg>',
+  stageAsset: "cd21514d0531fdffb22204e0ec5ed84a", deviceAsset: "2982fc8705b563ff942c3eba3cb6358b"
+};
+/* シミュレーターのブロック → mBlock のブロック。in: 数値の入力 / fld: ドロップダウン / menu: メニュー入力 (mBlock では小さなブロックになる) */
+const MBMAP = {
+  cyberpi_when_launch:{ext:"cyberpi"},
+  cyberpi_when_button_press:{ext:"cyberpi", fld:{fieldMenu_2:"BUTTON"}},
+  mbot2_move_direction_with_time:{ext:"mbot2", in:{POWER:"POWER", TIME:"TIME"}, fld:{DIRECTION:"DIRECTION"}},
+  mbot2_move_direction_with_rpm:{ext:"mbot2", in:{POWER:"POWER"}, fld:{DIRECTION:"DIRECTION"}},
+  mbot2_move_straight_with_cm_and_inch:{ext:"mbot2", in:{POWER:"POWER"}, fld:{DIRECTION:"DIRECTION", fieldMenu_3:"UNIT"}},
+  mbot2_cw_and_ccw_with_angle:{ext:"mbot2", in:{ANGLE:"ANGLE"}, fld:{fieldMenu_1:"TURN"}},
+  mbot2_encoder_motor_set_with_time:{ext:"mbot2", in:{LEFT_POWER:"LEFT_POWER", number_3:"TIME"}, fld:{fieldMenu_4:"MODE"}, menu:{fieldMenu_1:"EM"}},
+  mbot2_encoder_motor_set:{ext:"mbot2", in:{LEFT_POWER:"LEFT_POWER"}, fld:{fieldMenu_4:"MODE"}, menu:{inputMenu_1:"EM"}},
+  mbot2_encoder_motor_set_with_time_angle_and_circle:{ext:"mbot2", in:{LEFT_POWER:"LEFT_POWER"}, menu:{fieldMenu_1:"EM"}},
+  mbot2_encoder_motor_drive_speed2:{ext:"mbot2", in:{LEFT_POWER:"LEFT_POWER", RIGHT_POWER:"RIGHT_POWER"}},
+  mbot2_encoder_motor_drive_power:{ext:"mbot2", in:{LEFT_POWER:"LEFT_POWER", number_2:"RIGHT_POWER"}},
+  mbot2_encoder_motor_stop:{ext:"mbot2", fld:{fieldMenu_1:"EM"}},
+  mbot2_encoder_motor_get_speed:{ext:"mbot2", fld:{fieldMenu_3:"MODE"}, menu:{inputMenu_2:"EM"}},
+  mbot2_encoder_motor_get_angle:{ext:"mbot2", menu:{inputMenu_1:"EM"}},
+  mbot2_encoder_motor_reset_angle:{ext:"mbot2", menu:{inputMenu_1:"EM"}},
+  mbot2_encoder_motor_lock_and_unlock:{ext:"mbot2", fld:{fieldMenu_2:"LOCK"}, menu:{inputMenu_1:"EM"}},
+  mbot2_set_para:{ext:"mbot2", fld:{PARA:"PARA"}},
+  mbuild_quad_color_sensor_get_sta_with_inputMenu:{ext:"mbuild_quad_color_sensor", fld:{inputMenu_1:"COLOR"}, menu:{index:"INDEX", inputMenu_2:"STATUS"}},
+  BLOCK_1618397596925:{ext:"mbuild_quad_color_sensor", fld:{inputMenu_1:"COLOR"}, menu:{index:"INDEX"}},
+  BLOCK_1618364921511:{ext:"mbuild_quad_color_sensor", fld:{inputMenu_1:"COLOR"}, menu:{index:"INDEX", inputMenu_2:"STATUS"}},
+  BLOCK_1618397679204:{ext:"mbuild_quad_color_sensor", fld:{inputMenu_1:"COLOR"}, menu:{index:"INDEX"}},
+  mbuild_quad_color_sensor_is_line_and_background:{ext:"mbuild_quad_color_sensor", menu:{index:"INDEX", inputMenu_2:"PROBE", inputMenu_3:"COLOR"}},
+  mbuild_quad_color_sensor_get_rgb_gray_light:{ext:"mbuild_quad_color_sensor", menu:{index:"INDEX", inputMenu_2:"PROBE", inputMenu_3:"KIND"}},
+  mbuild_quad_color_sensor_get_off_track:{ext:"mbuild_quad_color_sensor", menu:{index:"INDEX"}},
+  BLOCK_1618382823173:{ext:"mbuild_quad_color_sensor", fld:{fieldMenu_3:"FILL"}, menu:{index:"INDEX"}},
+  BLOCK_1620904215289:{ext:"mbuild_quad_color_sensor", menu:{index:"INDEX"}},
+  BLOCK_1626250042594:{ext:"mbuild_quad_color_sensor", in:{r:"R", g:"G", b:"B", tolerance:"TOLERANCE"}, menu:{index:"INDEX"}},
+  BLOCK_1663048571053:{ext:"mbuild_quad_color_sensor", fld:{index:"INDEX"}},
+  BLOCK_1663048571165:{ext:"mbuild_quad_color_sensor", fld:{mode:"MODE"}}
+};
+/* メニューの値の呼び方が、シミュレーターと mBlock で違うもの */
+const MBVAL = {
+  COLOR:{background:"ground"}, PROBE:{"1":"R2","2":"R1","3":"L1","4":"L2",random:"any"},
+  KIND:{r:"red", g:"green", b:"blue", color:"color_sta"}, MODE:{normal:"standard", enhanced:"enhance"},
+  LOCK:{lock:"1", unlock:"0"}, PARA:{calibrate:"set_auto"}
+};
+const PRIM = {math_number:4, math_positive_number:5, math_whole_number:6, math_integer:7, math_angle:8, text:10};
+
+function mbConvert(dom){
+  const blocks = {}, variables = {};
+  let seq = 0; const nid = () => "b" + (++seq) + "_" + Math.random().toString(36).slice(2, 8);
+  [...dom.children].filter(c => c.tagName.toLowerCase() === "variable" || c.tagName.toLowerCase() === "variables").forEach(v => {
+    [...(v.tagName.toLowerCase() === "variables" ? v.children : [v])].forEach(x => variables[x.getAttribute("id")] = [x.textContent, 0]);
+  });
+  const prim = sh => { const t = sh.getAttribute("type"); const f = el.kid(sh, "field"); return [PRIM[t] || 4, f ? f.textContent : ""]; };
+  function conv(e, parent, top){
+    const id = e.getAttribute("id") || nid(), type = e.getAttribute("type"), map = MBMAP[type];
+    const b = {opcode: map ? map.ext + "." + type : type, next: null, parent: parent, inputs: {}, fields: {}, shadow: false, topLevel: !!top};
+    blocks[id] = b;
+    if(top){ b.x = Math.round(+e.getAttribute("x") || 0); b.y = Math.round(+e.getAttribute("y") || 0); }
+    const simField = n => el.field(e, n);
+    const mapVal = (k, v) => (MBVAL[k] && MBVAL[k][v] !== undefined) ? MBVAL[k][v] : v;
+    const input = (realName, simName) => {                                   // 数値・文字・ほかのブロックを入れる入力
+      const v = el.kid(e, "value", simName); if(!v) return;
+      const blk = [...v.children].find(c => c.tagName.toLowerCase() === "block"), sh = [...v.children].find(c => c.tagName.toLowerCase() === "shadow");
+      if(blk){ const cid = conv(blk, id, false); b.inputs[realName] = sh ? [3, cid, prim(sh)] : [2, cid]; }
+      else if(sh){ b.inputs[realName] = [1, prim(sh)]; }
+    };
+    for(const c of e.children){
+      const tag = c.tagName.toLowerCase();
+      if(tag === "value" && !map) input(c.getAttribute("name"), c.getAttribute("name"));
+      else if(tag === "statement"){ const first = [...c.children].find(x => x.tagName.toLowerCase() === "block"); if(first) b.inputs[c.getAttribute("name")] = [2, conv(first, id, false)]; }
+      else if(tag === "field" && !map){
+        const n = c.getAttribute("name"), vid = c.getAttribute("id");
+        b.fields[n] = n === "VARIABLE" ? [c.textContent, vid || null] : [c.textContent, null];
+      }
+    }
+    if(map){
+      Object.entries(map.in || {}).forEach(([real, sim]) => input(real, sim));
+      Object.entries(map.fld || {}).forEach(([real, sim]) => { b.fields[real] = [mapVal(sim, simField(sim)), null]; });
+      Object.entries(map.menu || {}).forEach(([real, sim]) => {
+        const mid = nid(), mop = map.ext + "." + type + "_" + real + "_menu";
+        blocks[mid] = {opcode: mop, next: null, parent: id, inputs: {}, fields: {[mop + "_option"]: [mapVal(sim, simField(sim)), null]}, shadow: true, topLevel: false};
+        b.inputs[real] = [1, mid];
+      });
+    }
+    if(type === "control_stop") b.mutation = {tagName:"mutation", children:[], hasnext: simField("STOP_OPTION") === "other scripts in sprite" ? "true" : "false"};
+    const nx = el.next(e);
+    if(nx){ const nidd = conv(nx, id, false); b.next = nidd; }
+    return id;
+  }
+  [...dom.children].filter(c => c.tagName.toLowerCase() === "block").forEach(b => conv(b, null, true));
+  return {blocks, variables};
+}
+
+function mbProject(blocks, variables){
+  const costume = {name:"cyberpi", bitmapResolution:1, dataFormat:"svg", assetId:MB.deviceAsset, md5ext:MB.deviceAsset + ".svg", rotationCenterX:47, rotationCenterY:55};
+  const dev = (name, layer, bl, vr) => ({isStage:false, name, variables:vr, lists:{}, broadcasts:{}, blocks:bl, comments:{}, currentCostume:0, costumes:[costume], sounds:[],
+    volume:100, layerOrder:layer, visible:false, x:0, y:0, size:100, direction:90, draggable:false, rotationStyle:"all around", deviceId:"cyberpi",
+    loadedExtIds:["mbot2","cyberpi_mbuild_ultrasonic2","mbuild_quad_color_sensor"], editorMode:"block", codes:null, codeTypes:"python", online:true});
+  const mbot = dev("mbotneo", 2, blocks, variables);
+  mbot.extraInfo = {mainDevice:"cyberpi", relatedExts:["mbot2","mbuild_quad_color_sensor","cyberpi_mbuild_ultrasonic2"]};
+  const stage = {isStage:true, name:"Stage", variables:{}, lists:{}, broadcasts:{}, blocks:{}, comments:{}, currentCostume:0,
+    costumes:[{name:"backdrop1", dataFormat:"svg", assetId:MB.stageAsset, md5ext:MB.stageAsset + ".svg", rotationCenterX:240, rotationCenterY:180}],
+    sounds:[], volume:100, layerOrder:0, tempo:60, videoTransparency:50, videoState:"off", textToSpeechLanguage:null};
+  return {targets:[stage, dev("cyberpi", 1, {}, {}), mbot], monitors:[], extensions:["mbot2-mbot2","mbuild"], meta:{semver:"3.0.0", vm:"2.0.14", agent:"mbot2-3d-sim"}};
+}
+function mbScratch(){
+  const st = (id, name, dev, editing) => ({id, name, deviceId:dev, codeTypes:["python"], editorMode:"block", ...(dev ? {online:true} : {}), isEditing:editing});
+  return {spritesState:{sid:st("sid", "Stage", null, false), cid:st("cid", "cyberpi", "cyberpi", false), mid:st("mid", "mbotneo", "cyberpi", true)},
+    extensions:{mbotneo:{version:"1.0.5"}, cyberpi:{isScratch:false, version:"1.1.46"}, mbot2:{isScratch:false, version:"0.0.13"}, mbuild_quad_color_sensor:{isScratch:false, version:"0.0.8"}}};
+}
+
+/* ZIP (圧縮なし) を作る */
+const CRC_T = (() => { const t = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = b => { let c = 0xFFFFFFFF; for(let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files){
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+  for(const [name, data] of files){
+    const nb = enc.encode(name), db = typeof data === "string" ? enc.encode(data) : data, crc = crc32(db);
+    const head = new Uint8Array([0x50,0x4b,3,4, ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(db.length), ...u32(db.length), ...u16(nb.length), ...u16(0)]);
+    parts.push(head, nb, db);
+    cen.push(new Uint8Array([0x50,0x4b,1,2, ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(db.length), ...u32(db.length), ...u16(nb.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nb);
+    off += head.length + nb.length + db.length;
+  }
+  const cenLen = cen.reduce((s, x) => s + x.length, 0);
+  const end = new Uint8Array([0x50,0x4b,5,6, 0,0, 0,0, ...u16(files.length), ...u16(files.length), ...u32(cenLen), ...u32(off), 0,0]);
+  return new Blob([...parts, ...cen, end], {type:"application/x.scratch.sb3"});
+}
+function mbBuildFile(){
+  const dom = Blockly.Xml.workspaceToDom(ws);
+  const {blocks, variables} = mbConvert(dom);
+  const files = [["project.json", JSON.stringify(mbProject(blocks, variables))], ["mscratch.json", JSON.stringify(mbScratch())],
+    ["mblock5", JSON.stringify({version:"5.6.1", createdAt: Date.now()})], [MB.stageAsset + ".svg", MB.stageSvg], [MB.deviceAsset + ".svg", MB.deviceSvg]];
+  return {blob: makeZip(files), count: Object.keys(blocks).length};
+}
+function exportMblock(){
+  if(!ws){ toast("ブロックエディターを読み込めませんでした"); return; }
+  try{
+    const {blob, count} = mbBuildFile();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "mbot2-simulator.sb3";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("mBlock 用のファイルを書き出しました (ブロック " + count + " 個)。mBlock の「ファイル → コンピューターから開く」で開いてください");
+  }catch(e){ toast("書き出しに失敗しました: " + e.message); }
+}
+
 /* ----- スレッド管理 ----- */
 function hatsOf(types, test){
   if(!ws) return [];
@@ -772,6 +924,7 @@ function setStatus(){
   document.getElementById("pad").classList.toggle("show", S.manual && !isRunning());
 }
 document.getElementById("bRun").onclick = runProgram;
+document.getElementById("bExport").onclick = exportMblock;
 document.getElementById("bStop").onclick = () => { stopAll(); alive.clear(); threadCount = 0; setStatus(); };
 bManual.onclick = () => { if(isRunning()){ stopAll(); alive.clear(); threadCount = 0; } S.manual = !S.manual; setStatus(); };
 document.getElementById("bReset").onclick = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); };
