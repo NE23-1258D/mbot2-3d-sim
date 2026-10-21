@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mBot2 3Dシミュレーター</title>
+<style>
+  :root{
+    --bg:#0e131c; --panel:#161d2b; --card:#1d2638; --line:#2c3852; --text:#e8edf7; --muted:#98a5c0;
+    --accent:#3aa6ff; --on:#39e07a; --off:#3b4558;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
+  }
+  :root[data-theme="light"]{ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;overflow:hidden}
+  body{display:grid;grid-template-columns:380px minmax(0,1fr);grid-template-rows:100%}
+  #panel{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:18px 18px 28px;display:flex;flex-direction:column;gap:14px}
+  #stage{position:relative;min-width:0;min-height:0}
+  canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  h1{font-size:18px;margin:0}
+  .sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  .row{display:flex;gap:8px}
+  .row + .row{margin-top:8px}
+  button{flex:1;font:inherit;font-size:14px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 8px;cursor:pointer;min-height:48px}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
+  button.active{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  label:first-of-type{margin-top:0}
+  label b{color:var(--text);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;height:28px;accent-color:var(--accent)}
+  .chips{display:flex;gap:8px;margin-bottom:10px}
+  .chip{flex:1;text-align:center;font-size:15px;padding:10px 0;border-radius:10px;border:2px solid var(--line);color:var(--muted)}
+  .chip.next{color:var(--text);font-weight:700}
+  .chip.done{color:#04121f;font-weight:700}
+  .chip.done::after{content:" ✓"}
+  #mInfo{font-size:13px;color:var(--muted);margin:10px 0 0;min-height:1.4em}
+  #mInfo.clear{color:var(--on);font-weight:700}
+  .sens{display:flex;gap:8px}
+  .sens div{flex:1;text-align:center;font-size:12px;color:var(--muted)}
+  .sens i{display:block;height:26px;border-radius:7px;background:var(--off);margin-bottom:4px}
+  .sens i.on{background:var(--on)}
+  .help{font-size:12px;color:var(--muted);line-height:1.7;margin:0}
+  kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  #hud{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+  #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;font-size:14px;font-variant-numeric:tabular-nums}
+  #pad{position:absolute;right:16px;bottom:16px;display:none;gap:8px;align-items:flex-end}
+  #pad.show{display:flex}
+  #pad button{flex:none;width:68px;min-height:68px;font-size:26px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
+  #pad button:active{background:var(--accent);color:#04121f}
+  @media (max-width:900px){
+    body{grid-template-columns:100%;grid-template-rows:56% 44%}
+    #stage{order:1}
+    #panel{order:2;border-right:0;border-top:1px solid var(--line);padding:14px 14px 24px}
+    #pad button{width:60px;min-height:60px}
+  }
+</style>
+</head>
+<body>
+<aside id="panel" aria-label="操作パネル">
+  <div>
+    <h1>mBot2 3Dシミュレーター</h1>
+    <p class="sub">黒い線をたどる / 色マスを順に踏む</p>
+  </div>
+
+  <section class="card" aria-label="走行">
+    <h2>走行</h2>
+    <div class="row">
+      <button id="bAuto" type="button" class="primary">▶ 線をたどる</button>
+      <button id="bManual" type="button">手動</button>
+    </div>
+    <div class="row"><button id="bReset" type="button">リセット</button></div>
+  </section>
+
+  <section class="card" aria-label="課題">
+    <h2>課題: 色マスを順に踏もう</h2>
+    <div class="chips" id="chips" aria-label="踏む順番"></div>
+    <div class="row">
+      <button id="mManual" type="button">手動で挑戦</button>
+      <button id="mAuto" type="button">自動で解く</button>
+    </div>
+    <p id="mInfo">緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます</p>
+  </section>
+
+  <section class="card" aria-label="視点">
+    <h2>視点</h2>
+    <div class="row">
+      <button id="vOrbit" type="button" class="active">斜め</button>
+      <button id="vFollow" type="button">追従</button>
+      <button id="vTop" type="button">真上</button>
+    </div>
+  </section>
+
+  <section class="card" aria-label="調整">
+    <h2>調整</h2>
+    <label for="speed">速さ <b id="speedV">2.0</b></label>
+    <input id="speed" type="range" min="0.5" max="3" step="0.1" value="2">
+    <label for="gain">曲がる強さ <b id="gainV">3.0</b></label>
+    <input id="gain" type="range" min="1" max="8" step="0.5" value="3">
+  </section>
+
+  <section class="card" aria-label="センサー">
+    <h2>クアッドRGBセンサー (黒=点灯)</h2>
+    <div class="sens">
+      <div><i id="sL2"></i>L2</div><div><i id="sL1"></i>L1</div><div><i id="sR1"></i>R1</div><div><i id="sR2"></i>R2</div>
+    </div>
+  </section>
+
+  <p class="help">
+    手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回(画面右下のボタンでも操作できます)<br>
+    視点: ドラッグで回転、ホイールで拡大縮小
+  </p>
+</aside>
+
+<main id="stage">
+  <canvas id="c" aria-label="mBot2 の3Dシミュレーション"></canvas>
+  <div id="hud"><span id="hudStatus">停止中</span><span id="hudInfo">周回 0.00</span></div>
+  <div id="pad" aria-label="手動操作ボタン">
+    <button type="button" data-k="ArrowLeft" aria-label="左に旋回">◀</button>
+    <button type="button" data-k="ArrowUp" aria-label="前進">▲</button>
+    <button type="button" data-k="ArrowRight" aria-label="右に旋回">▶</button>
+  </div>
+</main>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+const FIELD_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlEAAAG9CAYAAAA1EiO6AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAEpdJREFUeAHt3F2M3XWdx/HvPLRT+ghboC6tPHR3gskCid6QrTUmeqE3Uhez2TVerSIJV1wZEr0gbohwI5o1ETcRE42JJkZqQBLj7t4ImnBnspJYkkWWtgkYmtoHyvRh5uz5TRm2wnn4z8dhWo+vV3Nges5v/uf85kzP733+///M1Pz8fK8AAFiV2ZUPZmZmCgCA0ZaWlqrX612MqBZQhw4dKgAARrvmmmtq165d/78nqmlVBQDAcFNTU8vNNF0AAKzawIhqhcX6u/Tr7jkAuvBS8ZfA2nC5Dfu6zw66su2i2rBhQ83Pz9fi4mLx7mrnpB07dqxeffXVt65rz8HMruma2tn/i6dgIi1Vr7b1/9xQe/ofe5JZnen+W+BTp6bq6NFiorV9Hb/tXy6ebmN9Xl+D1udLzQ77xPYEPf/888X6ePLJJ+vAgQN/dN3iw7365L/8Xf1PvVZMnmN1ov6p/rkerX8vSDz7bNWHPlRMtKX+ZUv/svDWNdbn9TVofV4xNKIU7vo6derUO66bOl31Uh2v/65Xisn0Sp0sSJ0+3f7b9lA4xDO5LtTKXqgV1uf1NWh9XuHEcgCAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAgMjajZ2dmB1y8tLdUo425/t7a11ttbz20BwFpa7brT6/Wi25L7vpydkMxzx44dQz9ndtgNR48erQceeKDeeOON5b+3/3/gAx+o++67r0aZnp6ub37zm/XrX/+6Nm3aNHRc295jjz22PH7Utp577rn61re+Vdu2bRs67tSpU8uP9X3ve1+N0r5An//85+uqq64aOub111+vj3zkI/WZz3xm5La6zLPd39TUVH3ta18rAFgvbY362c9+Vj/84Q9r+/btQ8e1Ne/hhx+u66+/fuiYto698sor9cUvfrG2bt06dNyJEyfq05/+dH384x+vcY/toYceWu6MDRs2DBxz/vz52rNnT33pS18au62u8/z6178+siVW5tnuc8uWLcvXtfX9N7/5zdDPqfn5+V4/Pnr9T24Jtny59ONLL/v27et18cEPfnDg57/9srCwMHZb3/72tztt6+DBg2O31e5vZmZm7LY+8YlP9LroMs9+sPX63wxjt/X973//nZ//b1O9v+1d0yt/JvbPP/b+oQepn/+8vXVe7LW3bC6TejnbX5PnepeuDbfeemun748vfOELvS7r5/PPPz92W21Ml221++yiH0hjt3XjjTd22lbXeR4+fHjstobNsx9rf/T3nTt3LrfTwD1RvSG7tK6++urqYlQNrpibm6suRu3NWu24VpntMOXi4uLIcV0ef9dxXec5yK66vq6r3bWx3lNMol7Nnt5aL778u7owe75gNWZnF+v48R11881/3X+d6RWTqb3v/+1vL+bUaq3sTRln2Ok7f/w4ZqqLrvfZZdyoo0ar3VbbY9VlDsPGDDtsOP4rx2Xzr72H6t66p5bKOVWTaLr/5z/+6z/rbz65tyDx0Y9+qH73u18Uk6ut3a0RFhaKK9DAiGp7bAbtjWrHO7s4efLk2DFnz56tLhY6fud02V6bUzvOOk47x6qLLvNcOacssVBnlv8/7YcoJ9bi3IWC1NzctmKyXbgwFe2Fatp5QN3uY/zr0LgjOKu9zy7jzpw5U1102Vbbk9RlDsPGtD1Zg/ZGDT2cd9NNN9VTTz311iTahvvHAKuLxx9/vI4dOzZy11nb3saNG2ucAwcOVP/479CTz5oWRrfddluN07bxzDPPjH1cu3btqi66zLMFadfdoACwVu6///666667Rq6fLaBuueWWGmfv3r3L6+e4tbjLtpqnn356uS/aGjlI65Cuh/O6zrPL2v72eW7evLkOHjxYDz744MDxQw/ntU+8/fbb33F9782fOBum3d6ip4teh7y+9tpra//+/dXFuMfW7Nu3r7poxTnqJwfXep7QDNsLDM2wd8Pwdu37ZPfu3cuXtdDOO+66Fo9bP9vtd9xxR3Uxbl1fj3m+8MILQ8fPjnpgg4yLlHG3p2PXYnujntTVjr2c82RytReM+fn5+vCHP9z5UDaTr72GtFMDfvzjHxd0sZr1br3vezWPbS3X9dSo12InlsMV5u67765HHnmk4FLHjx+vJ554wp5KuII4YxmuMH/KDyMwueyZhCuPiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACMwWcEWZm5urpaWlOn/+fEEzMzNTU1NTBVxZRBRcQaanp+urX/1qfeMb36her1dwKSEFV5ahETU7O/im9g65vdAPM+72d2tbV/JjW+08+MvVvleahYWFAkitdt1pb9qGRfqo25L7vpydMMqwee7YsWPo5wyNqKNHj9bnPve5Onv27PLfz5w5U3feeWc98MADNcrKO+lf/vKXtXnz5qHjXn/99frRj340cvLttl/96lf1yCOP1Pbt24eOO3nyZH35y1+u97///TVK+2J/6lOfqi1btgwdc/r06frYxz5W991338htdZlne0La5Xvf+56IAmDdtDXniSeeqO985zt19dVXDx136tSpeuyxx+qGG24YOqaFxauvvlr33ntvbdu2bei4P/zhD/XZz3627r777hr32FpLvPjii8unLwxy7ty52rNnTz366KNjt9V1nt/97ndHjhk0z/b4Dh06NPRzZodtqH0x2oO61GuvvTY2opqf/OQn9eyzz44c0+5jcXFx6B6vFe3BP/XUUzXOPffcMzai2v399Kc/rQsXLtQ44yKq6TLPUSE51saNxWS7MDNTkDp7dvxrGX/u8kO4zz33XD399NNjx7UdFaMiqjl27Fg9+eSTNc5tt902NqKaH/zgB3X48OGRY2666aaxEdV0nWfbeTMqopph82yxtnKk4FIDC2bYuRijCnS14zZ2DIS1HNfCrZ2gOS6itm7dWl2s5TwHat9gR45Ur793jMkztWmudvz+97Wn/0KxZdOmgtU4e/Z83XzzNf2P2kLkNWJytdeGpUp0fRM/0+HN3EzHN3xXXXVVp3FdHtumjq+LXbbVIqjLEaFh8xwUUI0Ty69gva88XPWVr5TTiyfTYv+y/+/vrMMvvVSQ+UX/xf3GcrbAJGuHu+xxvFINPZw3aG/UiRMnqot2jtI4K+dajdP1BNsu22tz6vJj4+3YaRdd5vnGG29Uamq6X8SzSzV9LnsXwpWtrXu9DRsKcmcE1MR7T13c27j6t9Pt8FUXXU5xaafDrOV9dhnXzsVeq221PUld5jBszKoP57Vjke1cpJVJtA3v3Lmzunj88ceXjyuO2v3XttflUNeBAwfq1ltvrQ0jFpsWRu047DhtG88888zYx7Vr167qoss8Vw4hAsB6uv/+++uuu+4auX62gLrllltqnL179y6vn+PW4i7bato5TK0vRv1EYNdDg13n2WVtf/s826HCgwcP1oMPPjhw/NDDee0Tb7/99ndcP+5HHdvtLXq66PJ7cK699trav39/ddHlxzD37dtXXYz7scm1nicArJW2hu3evXv5shba+Uld1+Iuv5bgjjvuqC7GrevrMc8XXnhh6PjpUQ9skHGRsprfJbHWvzhu3PZW82sGxo29nPMEgFEu56/VGXffq3lsa7mup0adVuRoOgBAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQERRAMDqiSgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgMDssBumpqaK9bNx48Z3XldL/SeimGD+mfGn2fTm/3cWk2lqavOA67xwrKdB6/OKoRF17ty5evnll2thYaF4d83NzdWRI0fecf2RzZvryF9trzPnl4rJ0ztxsv8vsP+P86X/ralzZwtWp72wv/jmx8eLyTQ7e76W3rYEWJ/Xz7D1ecXU/Px8b2Zmpg4dOlS9Xu/ilW9W7srfWR/T09P9fywX/7VM95+Dix95xzHxeiIZGG56ur8eLFmfL6dL1+dm586ddd111w3eE+XJuTwufYKW3noOPBcAf8lWAqqxPl8eS0uD3+w6sRwAIPBWRKlbAIDxWjO1Q6uzK3/ZunXr8jE/AAAGW1xcrE2bNi0f4luOqPbBe9/7XnujAABGaHugWje1y/8BazdUIZcDD3gAAAAASUVORK5CYIKNNSGvWWTIr9s9FEv/Nemcwe9qfffBlivLie3sAyFQOg==";
+
+/* ---------- 世界の大きさ: 横480 x 縦360 (単位は共通) ---------- */
+const W = 480, H = 360;
+const ROBOT_LEN = 24, ROBOT_WID = 20;
+const SENS_F = 14;                  // 車体中心からセンサーまでの前方距離
+const SENS_OFF = [-6, -2, 2, 6];    // L2 L1 R1 R2 (右が +)
+const START = {x:-57, y:-20, d:0};  // d: 上向き0度、時計回りが +
+
+/* ---------- 状態 ---------- */
+const S = {x:START.x, y:START.y, d:START.d, last:1, ang:0, prev:null, mode:"idle", sens:[0,0,0,0], view:"orbit"};
+const keys = {};
+const ORDER = [
+  {k:"green",  n:"緑", x:-108, y: 117, c:"#1fe04a"},
+  {k:"blue",   n:"青", x: 108, y: 117, c:"#3a63ff"},
+  {k:"red",    n:"赤", x:-108, y:-117, c:"#ff4040"},
+  {k:"yellow", n:"黄", x: 108, y:-117, c:"#ffe21a"}
+];
+const MS = {on:false, step:0, done:false, t:0};
+
+/* ---------- レンダラー ---------- */
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+renderer.shadowMap.enabled = true;
+renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e131c);
+scene.fog = new THREE.Fog(0x0e131c, 700, 1400);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 3000);
+camera.position.set(0, 300, 330);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI/2 - 0.04;
+controls.minDistance = 40; controls.maxDistance = 900;
+
+scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a3040, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(160, 320, 120);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left:-280, right:280, top:240, bottom:-240, near:10, far:900});
+scene.add(sun);
+
+/* ---------- フィールド ---------- */
+const base = new THREE.Mesh(new THREE.BoxGeometry(W+16, 10, H+16), new THREE.MeshStandardMaterial({color:0x1b2232, roughness:.9}));
+base.position.y = -5.2; base.receiveShadow = true; scene.add(base);
+
+const fieldTex = new THREE.TextureLoader().load(FIELD_IMG);
+fieldTex.encoding = THREE.sRGBEncoding;
+fieldTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({map:fieldTex, roughness:.95, metalness:0}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+
+/* センサー判定用に、同じ画像を 2倍解像度のキャンバスへ */
+let pix = null;
+const SC = 2;
+const img = new Image();
+img.onload = function(){
+  const cv = document.createElement("canvas"); cv.width = W*SC; cv.height = H*SC;
+  const cx = cv.getContext("2d", {willReadFrequently:true});
+  cx.imageSmoothingEnabled = false;
+  cx.drawImage(img, 0, 0, cv.width, cv.height);
+  pix = cx.getImageData(0, 0, cv.width, cv.height).data;
+};
+img.src = FIELD_IMG;
+function isBlack(x, y){
+  if(!pix) return false;
+  const ix = Math.floor((x + W/2) * SC), iy = Math.floor((H/2 - y) * SC);
+  if(ix < 0 || iy < 0 || ix >= W*SC || iy >= H*SC) return false;
+  const i = (iy * W * SC + ix) * 4;
+  return pix[i] + pix[i+1] + pix[i+2] < 120;
+}
+
+function colorAt(x, y){
+  if(!pix) return null;
+  const ix = Math.floor((x + W/2) * SC), iy = Math.floor((H/2 - y) * SC);
+  if(ix < 0 || iy < 0 || ix >= W*SC || iy >= H*SC) return null;
+  const i = (iy * W * SC + ix) * 4, r = pix[i], g = pix[i+1], b = pix[i+2];
+  if(r < 90  && g > 170 && b < 90)  return "green";
+  if(r < 90  && g < 90  && b > 170) return "blue";
+  if(r > 170 && g < 90  && b < 90)  return "red";
+  if(r > 170 && g > 170 && b < 110) return "yellow";
+  return null;
+}
+
+/* ---------- mBot2 モデル (前が -Z, 右が +X) ---------- */
+const robot = new THREE.Group();
+const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.5, metalness:.15}, o||{}));
+function part(geo, mat, x, y, z){ const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; robot.add(m); return m; }
+part(new THREE.BoxGeometry(ROBOT_WID, 7, ROBOT_LEN), M(0x2b9fd8), 0, 9, 0);                    // 本体
+part(new THREE.BoxGeometry(ROBOT_WID+1, 1.2, ROBOT_LEN-6), M(0x16597a), 0, 12.9, 2);            // 上板
+part(new THREE.BoxGeometry(14, 2.2, 9), M(0x1a1f2b), 0, 14.5, 3);                                // CyberPi
+part(new THREE.BoxGeometry(10, .3, 5.5), M(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, 15.7, 3);  // 画面
+[-1, 1].forEach(s => {                                                                          // 車輪
+  const w = part(new THREE.CylinderGeometry(5, 5, 3.4, 28), M(0x15181f, {roughness:.8}), s*11.7, 5, 2);
+  w.rotation.z = Math.PI/2;
+  const hub = part(new THREE.CylinderGeometry(2.2, 2.2, 3.6, 16), M(0xc9d2e3), s*11.7, 5, 2);
+  hub.rotation.z = Math.PI/2;
+});
+part(new THREE.SphereGeometry(2, 16, 12), M(0xf0f0f0), 0, 2, 10);                                // キャスター
+part(new THREE.BoxGeometry(18, 1.6, 3), M(0x2a3040), 0, 3.2, -13);                               // センサーバー
+part(new THREE.ConeGeometry(2.6, 5, 4), M(0xffffff), 0, 13.6, -9).rotation.x = -Math.PI/2;       // 前向きの目印
+scene.add(robot);
+
+/* センサー点 (地面上) */
+const sensMats = [], sensMeshes = SENS_OFF.map(() => {
+  const mat = new THREE.MeshBasicMaterial({color:0xff4d4d});
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, .6, 16), mat);
+  scene.add(m); sensMats.push(mat); return m;
+});
+
+/* 走行の軌跡 */
+const MAX_TRAIL = 6000;
+const trailGeo = new THREE.BufferGeometry();
+const trailPos = new Float32Array(MAX_TRAIL * 3);
+trailGeo.setAttribute("position", new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setDrawRange(0, 0);
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({color:0xffb020}));
+trail.position.y = .5; trail.frustumCulled = false; scene.add(trail);
+let trailN = 0;
+function trailPush(x, y){
+  if(trailN >= MAX_TRAIL){ trailPos.copyWithin(0, 3); trailN = MAX_TRAIL - 1; }
+  trailPos.set([x, 0, -y], trailN*3); trailN++;
+  trailGeo.setDrawRange(0, trailN); trailGeo.attributes.position.needsUpdate = true;
+}
+
+/* ---------- 物理 / 制御 ---------- */
+const rad = a => a * Math.PI / 180;
+function sensorXY(i){
+  const r = rad(S.d), o = SENS_OFF[i];
+  return [S.x + SENS_F*Math.sin(r) + o*Math.cos(r), S.y + SENS_F*Math.cos(r) - o*Math.sin(r)];
+}
+function readSensors(){
+  for(let i=0;i<4;i++){ const p = sensorXY(i); S.sens[i] = isBlack(p[0], p[1]) ? 1 : 0; }
+}
+const ui = {
+  speed: document.getElementById("speed"), gain: document.getElementById("gain"),
+  speedV: document.getElementById("speedV"), gainV: document.getElementById("gainV"),
+  hudStatus: document.getElementById("hudStatus"), hudInfo: document.getElementById("hudInfo"),
+  sens: ["sL2","sL1","sR1","sR2"].map(id => document.getElementById(id))
+};
+function tick(){
+  readSensors();
+  const speed = +ui.speed.value, K = +ui.gain.value;
+  let move = 0;
+  if(S.mode === "auto"){
+    const [L2,L1,R1,R2] = S.sens, tot = L2+L1+R1+R2;
+    const err = (R1 + 2*R2) - (L1 + 2*L2);
+    if(tot === 0){ S.d += 8 * S.last; }          // 見失った: 最後に見えた側へ
+    else if(tot >= 3){ S.d += 10; }              // 直角の角: 右(時計回り)へ
+    else { S.d += K * err; if(err > 0) S.last = 1; else if(err < 0) S.last = -1; }
+    move = speed;
+  } else if(S.mode === "nav" && MS.on && !MS.done){
+    const t = ORDER[MS.step];
+    const hd = Math.atan2(t.x - S.x, t.y - S.y) * 180 / Math.PI;
+    const df = ((hd - S.d + 540) % 360 + 360) % 360 - 180;
+    S.d += Math.max(-5, Math.min(5, df));
+    move = speed * (Math.abs(df) < 25 ? 1 : .3);
+  } else if(S.mode === "manual"){
+    if(keys.ArrowLeft || keys.a)  S.d -= 3;
+    if(keys.ArrowRight || keys.d) S.d += 3;
+    if(keys.ArrowUp || keys.w)    move = speed;
+    if(keys.ArrowDown || keys.s)  move = -speed * .6;
+  }
+  if(move){
+    const r = rad(S.d);
+    S.x += move * Math.sin(r); S.y += move * Math.cos(r);
+    S.x = Math.max(-W/2+6, Math.min(W/2-6, S.x)); S.y = Math.max(-H/2+6, Math.min(H/2-6, S.y));
+    trailPush(S.x, S.y);
+    const a = Math.atan2(S.y, S.x);
+    if(S.prev !== null){ let da = a - S.prev; da = ((da + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI; S.ang += da; }
+    S.prev = a;
+  }
+  if(MS.on && !MS.done){
+    if(S.mode !== "idle") MS.t += 1/60;
+    if(colorAt(S.x, S.y) === ORDER[MS.step].k){
+      MS.step++;
+      if(MS.step >= ORDER.length){ MS.done = true; S.mode = "idle"; setStatus(); }
+      renderMission();
+    }
+  }
+}
+
+/* ---------- 画面への反映 ---------- */
+function syncModel(){
+  robot.position.set(S.x, 0, -S.y);
+  robot.rotation.y = -rad(S.d);
+  for(let i=0;i<4;i++){
+    const p = sensorXY(i);
+    sensMeshes[i].position.set(p[0], .5, -p[1]);
+    sensMats[i].color.set(S.sens[i] ? 0x39e07a : 0xff4d4d);
+    ui.sens[i].classList.toggle("on", !!S.sens[i]);
+  }
+  if(MS.on && !MS.done) renderMission();
+  ui.hudInfo.textContent = MS.on ? (MS.done ? "クリア " + MS.t.toFixed(1) + " 秒" : "つぎは「" + ORDER[MS.step].n + "」  " + MS.t.toFixed(1) + " 秒")
+                                  : "周回 " + Math.abs(S.ang / (2*Math.PI)).toFixed(2);
+}
+function setStatus(){
+  ui.hudStatus.textContent = S.mode === "auto" ? "オート走行中" : S.mode === "nav" ? "課題: 自動走行中" :
+    S.mode === "manual" ? (MS.on ? "課題: 手動操作中" : "手動操作中") : (MS.done ? "課題クリア" : "停止中");
+  bAuto.classList.toggle("active", S.mode === "auto"); bAuto.classList.toggle("primary", S.mode !== "auto");
+  bManual.classList.toggle("active", S.mode === "manual");
+  bAuto.textContent = S.mode === "auto" ? "■ 停止" : "▶ 線をたどる";
+  document.getElementById("pad").classList.toggle("show", S.mode === "manual");
+}
+const bAuto = document.getElementById("bAuto"), bManual = document.getElementById("bManual");
+bAuto.onclick = () => { MS.on = false; renderMission(); S.mode = S.mode === "auto" ? "idle" : "auto"; setStatus(); };
+bManual.onclick = () => { S.mode = S.mode === "manual" ? "idle" : "manual"; setStatus(); };
+document.getElementById("bReset").onclick = () => {
+  Object.assign(S, {x:START.x, y:START.y, d:START.d, last:1, ang:0, prev:null, mode:"idle"});
+  Object.assign(MS, {on:false, step:0, done:false, t:0}); renderMission();
+  trailN = 0; trailGeo.setDrawRange(0, 0); setStatus(); readSensors(); syncModel();
+};
+const chipsEl = document.getElementById("chips"), mInfo = document.getElementById("mInfo");
+ORDER.forEach(o => { const d = document.createElement("div"); d.className = "chip"; d.textContent = o.n; chipsEl.appendChild(d); });
+function renderMission(){
+  [...chipsEl.children].forEach((el, i) => {
+    const done = MS.on && i < MS.step, next = MS.on && !MS.done && i === MS.step;
+    el.classList.toggle("done", done); el.classList.toggle("next", next);
+    el.style.borderColor = done || next ? ORDER[i].c : ""; el.style.background = done ? ORDER[i].c : "";
+  });
+  mInfo.classList.toggle("clear", MS.done);
+  if(!MS.on) mInfo.textContent = "緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます";
+  else if(MS.done) mInfo.textContent = "クリア! タイム " + MS.t.toFixed(1) + " 秒";
+  else mInfo.textContent = "つぎは「" + ORDER[MS.step].n + "」  経過 " + MS.t.toFixed(1) + " 秒";
+}
+function startMission(auto){
+  Object.assign(S, {x:0, y:0, d:0, last:1, ang:0, prev:null});
+  trailN = 0; trailGeo.setDrawRange(0, 0);
+  Object.assign(MS, {on:true, step:0, done:false, t:0});
+  S.mode = auto ? "nav" : "manual"; setStatus(); renderMission(); readSensors(); syncModel();
+}
+document.getElementById("mManual").onclick = () => startMission(false);
+document.getElementById("mAuto").onclick = () => startMission(true);
+ui.speed.oninput = () => ui.speedV.textContent = (+ui.speed.value).toFixed(1);
+ui.gain.oninput = () => ui.gainV.textContent = (+ui.gain.value).toFixed(1);
+
+const views = {orbit:document.getElementById("vOrbit"), follow:document.getElementById("vFollow"), top:document.getElementById("vTop")};
+function homeScale(){ const st = document.getElementById("stage"), a = st.clientWidth / Math.max(1, st.clientHeight); return Math.min(2.4, Math.max(1, 1.5 / a)); }
+function setView(v){
+  S.view = v;
+  Object.keys(views).forEach(k => views[k].classList.toggle("active", k === v));
+  controls.enabled = (v === "orbit");
+  if(v === "orbit"){ controls.target.set(0, 0, 0); const f = homeScale(); camera.position.set(0, 300*f, 330*f); }
+}
+Object.keys(views).forEach(k => views[k].onclick = () => setView(k));
+
+window.addEventListener("keydown", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(k)){ keys[k] = true; if(S.mode === "manual") e.preventDefault(); }
+  else keys[k] = true;
+});
+window.addEventListener("keyup", e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+
+function resize(){
+  const st = document.getElementById("stage"), w = Math.max(1, st.clientWidth), h = Math.max(1, st.clientHeight);
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if(S.view === "orbit" && !resize.done){ const f = homeScale(); camera.position.set(0, 300*f, 330*f); resize.done = true; }
+}
+window.addEventListener("resize", resize);
+new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
+document.querySelectorAll("#pad button").forEach(b => {
+  const k = b.dataset.k, on = e => { keys[k] = true; e.preventDefault(); }, off = () => { keys[k] = false; };
+  b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointerleave", off); b.addEventListener("pointercancel", off);
+});
+
+
+/* ---------- メインループ (制御は60Hz固定) ---------- */
+let last = performance.now(), acc = 0;
+const STEP = 1000/60;
+function frame(now){
+  acc += Math.min(now - last, 100); last = now;
+  let n = 0;
+  while(acc >= STEP && n < 6){ tick(); acc -= STEP; n++; }
+  syncModel();
+  if(S.view === "follow"){
+    const r = rad(S.d), fx = Math.sin(r), fz = -Math.cos(r);
+    const tx = S.x - fx*75, tz = -S.y - fz*75;
+    camera.position.lerp(new THREE.Vector3(tx, 48, tz), .12);
+    camera.lookAt(S.x + fx*25, 6, -S.y + fz*25);
+  } else if(S.view === "top"){
+    camera.position.lerp(new THREE.Vector3(0, 520, .01), .12);
+    camera.lookAt(0, 0, 0);
+  } else controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+renderMission(); setStatus(); readSensors(); syncModel();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
