@@ -15,10 +15,10 @@
   :root[data-theme="light"]{ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;overflow:hidden}
-  body{display:grid;grid-template-columns:340px minmax(0,1fr);grid-template-rows:56% 44%;grid-template-areas:"panel stage" "panel blocks"}
+  body{display:grid;grid-template-columns:320px minmax(0,1fr);grid-template-rows:50% 50%;grid-template-areas:"panel stage" "panel blocks"}
   #panel{grid-area:panel;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:12px}
   #stage{grid-area:stage;position:relative;min-width:0;min-height:0}
-  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-top:1px solid var(--line);background:#fff}
+  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-top:1px solid #d9e3f2;background:#fff}
   #blockly{position:absolute;inset:0}
   canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
   h1{font-size:17px;margin:0}
@@ -53,12 +53,16 @@
   #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 11px;font-size:14px;font-variant-numeric:tabular-nums}
   #pad{position:absolute;right:14px;bottom:14px;display:none;gap:8px;align-items:flex-end}
   #pad.show{display:flex}
-  #pad button{flex:none;width:60px;min-height:60px;font-size:24px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
-  #pad button:active{background:var(--accent);color:#04121f}
-  #msg{position:absolute;top:10px;right:14px;z-index:30;max-width:70%;background:#1d2638;color:#e8edf7;border:1px solid #ff8a5e;border-radius:10px;padding:8px 12px;font-size:13px;display:none}
+  #pad button,#btns button{flex:none;width:56px;min-height:56px;font-size:22px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
+  #pad button:active,#btns button:active{background:var(--accent);color:#04121f}
+  #btns{position:absolute;left:14px;bottom:14px;display:flex;gap:8px}
+  #btns button{font-size:16px;font-weight:700;min-height:44px;width:44px}
+  #msg{position:absolute;top:10px;right:14px;z-index:30;max-width:70%;background:#fff;color:#575e75;border:2px solid #ff8c1a;border-radius:10px;padding:8px 12px;font-size:13px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.15)}
   #msg.show{display:block}
+  /* mBlock と同じ見た目になるよう、パレットの幅などを合わせる */
+  .scratchCategoryMenuItemLabel{font-family:"Helvetica Neue",Helvetica,sans-serif}
   @media (max-width:900px){
-    body{grid-template-columns:100%;grid-template-rows:34% 38% 28%;grid-template-areas:"stage" "blocks" "panel"}
+    body{grid-template-columns:100%;grid-template-rows:32% 40% 28%;grid-template-areas:"stage" "blocks" "panel"}
     #panel{border-right:0;border-top:1px solid var(--line)}
   }
 </style>
@@ -68,13 +72,13 @@
 <aside id="panel" aria-label="操作パネル">
   <div>
     <h1>mBot2 3Dシミュレーター</h1>
-    <p class="sub">ブロックを組み立てて、実機での動きを確認します。コースは 2m × 2m です。</p>
+    <p class="sub">mBlock と同じブロックを組み立てて、実機での動きを確認します。コースは 2m × 2m です。</p>
   </div>
 
   <section class="card" aria-label="実行">
     <h2>実行</h2>
     <div class="row">
-      <button id="bRun" type="button" class="primary">▶ 実行</button>
+      <button id="bRun" type="button" class="primary">▶ 実行 (旗)</button>
       <button id="bStop" type="button" class="stop">■ 停止</button>
     </div>
     <div class="row">
@@ -117,25 +121,27 @@
   </section>
 
   <section class="card" aria-label="センサーとモーター">
-    <h2>クアッドRGBセンサー (黒=点灯)</h2>
+    <h2>クアッドRGBセンサー (線=点灯)</h2>
     <div class="sens">
       <div><i id="sL2"></i>L2</div><div><i id="sL1"></i>L1</div><div><i id="sR1"></i>R1</div><div><i id="sR2"></i>R2</div>
     </div>
-    <div class="kv"><span>ライン偏差</span><b id="kOff">-</b></div>
-    <div class="kv"><span>左 / 右の車輪</span><b id="kWheel">0 / 0 rpm</b></div>
+    <div class="kv"><span>偏差 (-100〜100)</span><b id="kOff">-</b></div>
+    <div class="kv"><span>左(EM1) / 右(EM2)</span><b id="kWheel">0 / 0 rpm</b></div>
     <div class="kv"><span>走った距離</span><b id="kOdo">0 cm</b></div>
   </section>
 
   <p class="help">
-    ブロックは mBlock の mBot2 用ブロックに近づけていますが、名前や数値が実機と完全に同じとは限りません。実機では、モーターの動力・速度・床の材質・電池の残りで動きが変わります。<br>
-    手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回<br>
-    視点: ドラッグで回転、ホイールで拡大縮小
+    ブロックの見た目・名前・初期値は、mBlock (mBot2 シャーシ / クアッドRGBセンサー) の画面から取り込んでいます。<br>
+    シミュレーターでは、音・LED・見た目・AI など、動きに関係しないブロックは省いています。<br>
+    動力 100% は 160 rpm、車輪は滑らない、といった前提です。実機では床の材質や電池の残りで動きが変わります。<br>
+    手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回 / 視点: ドラッグで回転、ホイールで拡大縮小
   </p>
 </aside>
 
 <main id="stage">
   <canvas id="c" aria-label="mBot2 の3Dシミュレーション"></canvas>
   <div id="hud"><span id="hudStatus">停止中</span><span id="hudInfo">0.0 秒</span></div>
+  <div id="btns" aria-label="CyberPi のボタン"><button type="button" data-b="a" aria-label="ボタン A">A</button><button type="button" data-b="b" aria-label="ボタン B">B</button></div>
   <div id="pad" aria-label="手動操作ボタン">
     <button type="button" data-k="ArrowLeft" aria-label="左に旋回">◀</button>
     <button type="button" data-k="ArrowUp" aria-label="前進">▲</button>
@@ -150,14 +156,16 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/blockly_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/blocks_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/javascript_compressed.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/msg/ja.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.20220318143026/blockly_compressed_vertical.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.20220318143026/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.20220318143026/blocks_compressed_vertical.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.20220318143026/msg/messages.js"></script>
 <script>
 (function(){
 "use strict";
 const FIELD_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlEAAAG9CAYAAAA1EiO6AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAEpdJREFUeAHt3F2M3XWdx/HvPLRT+ghboC6tPHR3gskCid6QrTUmeqE3Uhez2TVerSIJV1wZEr0gbohwI5o1ETcRE42JJkZqQBLj7t4ImnBnspJYkkWWtgkYmtoHyvRh5uz5TRm2wnn4z8dhWo+vV3Nges5v/uf85kzP733+///M1Pz8fK8AAFiV2ZUPZmZmCgCA0ZaWlqrX612MqBZQhw4dKgAARrvmmmtq165d/78nqmlVBQDAcFNTU8vNNF0AAKzawIhqhcX6u/Tr7jkAuvBS8ZfA2nC5Dfu6zw66su2i2rBhQ83Pz9fi4mLx7mrnpB07dqxeffXVt65rz8HMruma2tn/i6dgIi1Vr7b1/9xQe/ofe5JZnen+W+BTp6bq6NFiorV9Hb/tXy6ebmN9Xl+D1udLzQ77xPYEPf/888X6ePLJJ+vAgQN/dN3iw7365L/8Xf1PvVZMnmN1ov6p/rkerX8vSDz7bNWHPlRMtKX+ZUv/svDWNdbn9TVofV4xNKIU7vo6derUO66bOl31Uh2v/65Xisn0Sp0sSJ0+3f7b9lA4xDO5LtTKXqgV1uf1NWh9XuHEcgCAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAgMjajZ2dmB1y8tLdUo425/t7a11ttbz20BwFpa7brT6/Wi25L7vpydkMxzx44dQz9ndtgNR48erQceeKDeeOON5b+3/3/gAx+o++67r0aZnp6ub37zm/XrX/+6Nm3aNHRc295jjz22PH7Utp577rn61re+Vdu2bRs67tSpU8uP9X3ve1+N0r5An//85+uqq64aOub111+vj3zkI/WZz3xm5La6zLPd39TUVH3ta18rAFgvbY362c9+Vj/84Q9r+/btQ8e1Ne/hhx+u66+/fuiYto698sor9cUvfrG2bt06dNyJEyfq05/+dH384x+vcY/toYceWu6MDRs2DBxz/vz52rNnT33pS18au62u8/z6178+siVW5tnuc8uWLcvXtfX9N7/5zdDPqfn5+V4/Pnr9T24Jtny59ONLL/v27et18cEPfnDg57/9srCwMHZb3/72tztt6+DBg2O31e5vZmZm7LY+8YlP9LroMs9+sPX63wxjt/X973//nZ//b1O9v+1d0yt/JvbPP/b+oQepn/+8vXVe7LW3bC6TejnbX5PnepeuDbfeemun748vfOELvS7r5/PPPz92W21Ml221++yiH0hjt3XjjTd22lbXeR4+fHjstobNsx9rf/T3nTt3LrfTwD1RvSG7tK6++urqYlQNrpibm6suRu3NWu24VpntMOXi4uLIcV0ef9dxXec5yK66vq6r3bWx3lNMol7Nnt5aL778u7owe75gNWZnF+v48R11881/3X+d6RWTqb3v/+1vL+bUaq3sTRln2Ok7f/w4ZqqLrvfZZdyoo0ar3VbbY9VlDsPGDDtsOP4rx2Xzr72H6t66p5bKOVWTaLr/5z/+6z/rbz65tyDx0Y9+qH73u18Uk6ut3a0RFhaKK9DAiGp7bAbtjWrHO7s4efLk2DFnz56tLhY6fud02V6bUzvOOk47x6qLLvNcOacssVBnlv8/7YcoJ9bi3IWC1NzctmKyXbgwFe2Fatp5QN3uY/zr0LgjOKu9zy7jzpw5U1102Vbbk9RlDsPGtD1Zg/ZGDT2cd9NNN9VTTz311iTahvvHAKuLxx9/vI4dOzZy11nb3saNG2ucAwcOVP/479CTz5oWRrfddluN07bxzDPPjH1cu3btqi66zLMFadfdoACwVu6///666667Rq6fLaBuueWWGmfv3r3L6+e4tbjLtpqnn356uS/aGjlI65Cuh/O6zrPL2v72eW7evLkOHjxYDz744MDxQw/ntU+8/fbb33F9782fOBum3d6ip4teh7y+9tpra//+/dXFuMfW7Nu3r7poxTnqJwfXep7QDNsLDM2wd8Pwdu37ZPfu3cuXtdDOO+66Fo9bP9vtd9xxR3Uxbl1fj3m+8MILQ8fPjnpgg4yLlHG3p2PXYnujntTVjr2c82RytReM+fn5+vCHP9z5UDaTr72GtFMDfvzjHxd0sZr1br3vezWPbS3X9dSo12InlsMV5u67765HHnmk4FLHjx+vJ554wp5KuII4YxmuMH/KDyMwueyZhCuPiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACMwWcEWZm5urpaWlOn/+fEEzMzNTU1NTBVxZRBRcQaanp+urX/1qfeMb36her1dwKSEFV5ahETU7O/im9g65vdAPM+72d2tbV/JjW+08+MvVvleahYWFAkitdt1pb9qGRfqo25L7vpydMMqwee7YsWPo5wyNqKNHj9bnPve5Onv27PLfz5w5U3feeWc98MADNcrKO+lf/vKXtXnz5qHjXn/99frRj340cvLttl/96lf1yCOP1Pbt24eOO3nyZH35y1+u97///TVK+2J/6lOfqi1btgwdc/r06frYxz5W991338htdZlne0La5Xvf+56IAmDdtDXniSeeqO985zt19dVXDx136tSpeuyxx+qGG24YOqaFxauvvlr33ntvbdu2bei4P/zhD/XZz3627r777hr32FpLvPjii8unLwxy7ty52rNnTz366KNjt9V1nt/97ndHjhk0z/b4Dh06NPRzZodtqH0x2oO61GuvvTY2opqf/OQn9eyzz44c0+5jcXFx6B6vFe3BP/XUUzXOPffcMzai2v399Kc/rQsXLtQ44yKq6TLPUSE51saNxWS7MDNTkDp7dvxrGX/u8kO4zz33XD399NNjx7UdFaMiqjl27Fg9+eSTNc5tt902NqKaH/zgB3X48OGRY2666aaxEdV0nWfbeTMqopph82yxtnKk4FIDC2bYuRijCnS14zZ2DIS1HNfCrZ2gOS6itm7dWl2s5TwHat9gR45Ur793jMkztWmudvz+97Wn/0KxZdOmgtU4e/Z83XzzNf2P2kLkNWJytdeGpUp0fRM/0+HN3EzHN3xXXXVVp3FdHtumjq+LXbbVIqjLEaFh8xwUUI0Ty69gva88XPWVr5TTiyfTYv+y/+/vrMMvvVSQ+UX/xf3GcrbAJGuHu+xxvFINPZw3aG/UiRMnqot2jtI4K+dajdP1BNsu22tz6vJj4+3YaRdd5vnGG29Uamq6X8SzSzV9LnsXwpWtrXu9DRsKcmcE1MR7T13c27j6t9Pt8FUXXU5xaafDrOV9dhnXzsVeq221PUld5jBszKoP57Vjke1cpJVJtA3v3Lmzunj88ceXjyuO2v3XttflUNeBAwfq1ltvrQ0jFpsWRu047DhtG88888zYx7Vr167qoss8Vw4hAsB6uv/+++uuu+4auX62gLrllltqnL179y6vn+PW4i7bato5TK0vRv1EYNdDg13n2WVtf/s826HCgwcP1oMPPjhw/NDDee0Tb7/99ndcP+5HHdvtLXq66PJ7cK699trav39/ddHlxzD37dtXXYz7scm1nicArJW2hu3evXv5shba+Uld1+Iuv5bgjjvuqC7GrevrMc8XXnhh6PjpUQ9skHGRsprfJbHWvzhu3PZW82sGxo29nPMEgFEu56/VGXffq3lsa7mup0adVuRoOgBAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQERRAMDqiSgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgMDssBumpqaK9bNx48Z3XldL/SeimGD+mfGn2fTm/3cWk2lqavOA67xwrKdB6/OKoRF17ty5evnll2thYaF4d83NzdWRI0fecf2RzZvryF9trzPnl4rJ0ztxsv8vsP+P86X/ralzZwtWp72wv/jmx8eLyTQ7e76W3rYEWJ/Xz7D1ecXU/Px8b2Zmpg4dOlS9Xu/ilW9W7srfWR/T09P9fywX/7VM95+Dix95xzHxeiIZGG56ur8eLFmfL6dL1+dm586ddd111w3eE+XJuTwufYKW3noOPBcAf8lWAqqxPl8eS0uD3+w6sRwAIPBWRKlbAIDxWjO1Q6uzK3/ZunXr8jE/AAAGW1xcrE2bNi0f4luOqPbBe9/7XnujAABGaHugWje1y/8BazdUIZcDD3gAAAAASUVORK5CYIKNNSGvWWTIr9s9FEv/Nemcwe9qfffBlivLie3sAyFQOg==";
+const JA_MSG = {"CONTROL_FOREVER": "ずっと", "CONTROL_REPEAT": "%1 回繰り返す", "CONTROL_IF": "もし %1 なら", "CONTROL_ELSE": "でなければ", "CONTROL_STOP": "　", "CONTROL_STOP_ALL": "すべてを止める", "CONTROL_STOP_THIS": "このスクリプトを止める", "CONTROL_STOP_OTHER": "スプライトの他のスクリプトを止める", "CONTROL_WAIT": "%1 秒待つ", "CONTROL_WAITUNTIL": "%1 まで待つ", "CONTROL_REPEATUNTIL": "%1 まで繰り返す", "CONTROL_WHILE": "%1 の間繰り返す", "CONTROL_FOREACH": "%2 の要素を %1 に入れて繰り返す", "CONTROL_STARTASCLONE": "クローンされたとき", "CONTROL_CREATECLONEOF": "%1 のクローンを作る", "CONTROL_CREATECLONEOF_MYSELF": "自分自身", "CONTROL_DELETETHISCLONE": "このクローンを削除する", "CONTROL_COUNTER": "カウンター", "CONTROL_INCRCOUNTER": "カウンターに足す", "CONTROL_CLEARCOUNTER": "カウンターをクリアする", "CONTROL_ALLATONCE": "一斉に", "DATA_SETVARIABLETO": "%1 を %2 にする", "DATA_CHANGEVARIABLEBY": "%1 を %2 ずつ変える", "DATA_SHOWVARIABLE": "変数 %1 を表示する", "DATA_HIDEVARIABLE": "変数 %1 を隠す", "DATA_ADDTOLIST": "%1 を %2 に追加する", "DATA_DELETEOFLIST": "%2 の %1 番目を削除する", "DATA_DELETEALLOFLIST": "%1のすべてを削除する", "DATA_INSERTATLIST": "%3 の %2 番目に %1 を挿入する", "DATA_REPLACEITEMOFLIST": "%2 の %1 番目を %3 で置き換える", "DATA_ITEMOFLIST": "%2 の %1 番目", "DATA_ITEMNUMOFLIST": "%2中の%1の場所", "DATA_LENGTHOFLIST": "%1 の長さ", "DATA_LISTCONTAINSITEM": "%1 に %2 が含まれる", "DATA_SHOWLIST": "リスト %1 を表示する", "DATA_HIDELIST": "リスト %1 を隠す", "DATA_INDEX_ALL": "すべて", "DATA_INDEX_LAST": "最後", "DATA_INDEX_RANDOM": "乱数", "EVENT_WHENFLAGCLICKED": "%1 が押されたとき", "EVENT_WHENTHISSPRITECLICKED": "このスプライトが押されたとき", "EVENT_WHENSTAGECLICKED": "ステージが押されたとき", "EVENT_WHENTOUCHINGOBJECT": "このスプライトが %1 に触れたとき", "EVENT_WHENBROADCASTRECEIVED": "%1 を受け取ったとき", "EVENT_WHENBACKDROPSWITCHESTO": "背景が %1 になったとき", "EVENT_WHENGREATERTHAN": "%1 > %2 のとき", "EVENT_WHENGREATERTHAN_TIMER": "タイマー", "EVENT_WHENGREATERTHAN_LOUDNESS": "音量", "EVENT_BROADCAST": "%1 を送る", "EVENT_BROADCASTANDWAIT": "%1 を送って待つ", "EVENT_WHENKEYPRESSED": "%1 キーが押されたとき", "EVENT_WHENKEYPRESSED_SPACE": "スペース", "EVENT_WHENKEYPRESSED_LEFT": "左向き矢印", "EVENT_WHENKEYPRESSED_RIGHT": "右向き矢印", "EVENT_WHENKEYPRESSED_DOWN": "下向き矢印", "EVENT_WHENKEYPRESSED_UP": "上向き矢印", "EVENT_WHENKEYPRESSED_ANY": "どれかの", "LOOKS_SAYFORSECS": "%1 と %2 秒言う", "LOOKS_SAY": "%1 と言う", "LOOKS_HELLO": "こんにちは!", "LOOKS_THINKFORSECS": "%1 と %2 秒考える", "LOOKS_THINK": "%1 と考える", "LOOKS_HMM": "うーん...", "LOOKS_SHOW": "表示する", "LOOKS_HIDE": "隠す", "LOOKS_HIDEALLSPRITES": "すべてのスプライトを隠す", "LOOKS_EFFECT_COLOR": "色", "LOOKS_EFFECT_FISHEYE": "魚眼レンズ", "LOOKS_EFFECT_WHIRL": "渦巻き", "LOOKS_EFFECT_PIXELATE": "ピクセル化", "LOOKS_EFFECT_MOSAIC": "モザイク", "LOOKS_EFFECT_BRIGHTNESS": "明るさ", "LOOKS_EFFECT_GHOST": "幽霊", "LOOKS_CHANGEEFFECTBY": "%1 の効果を %2 ずつ変える", "LOOKS_SETEFFECTTO": "%1 の効果を %2 にする", "LOOKS_CLEARGRAPHICEFFECTS": "画像効果をなくす", "LOOKS_CHANGESIZEBY": "大きさを %1 ずつ変える", "LOOKS_SETSIZETO": "大きさを %1 %にする", "LOOKS_SIZE": "大きさ", "LOOKS_CHANGESTRETCHBY": "伸びを %1 ずつ変える", "LOOKS_SETSTRETCHTO": "伸びを %1 %にする", "LOOKS_SWITCHCOSTUMETO": "コスチュームを %1 にする", "LOOKS_NEXTCOSTUME": "次のコスチュームにする", "LOOKS_SWITCHBACKDROPTO": "背景を %1 にする", "LOOKS_GOTOFRONTBACK": "%1 へ移動する", "LOOKS_GOTOFRONTBACK_FRONT": "最前面", "LOOKS_GOTOFRONTBACK_BACK": "最背面", "LOOKS_GOFORWARDBACKWARDLAYERS": "%2 層 %1", "LOOKS_GOFORWARDBACKWARDLAYERS_FORWARD": "手前に出す", "LOOKS_GOFORWARDBACKWARDLAYERS_BACKWARD": "奥に下げる", "LOOKS_BACKDROPNUMBERNAME": "背景の %1", "LOOKS_COSTUMENUMBERNAME": "コスチュームの %1", "LOOKS_NUMBERNAME_NUMBER": "番号", "LOOKS_NUMBERNAME_NAME": "名前", "LOOKS_SWITCHBACKDROPTOANDWAIT": "背景を %1 にして待つ", "LOOKS_NEXTBACKDROP_BLOCK": "次の背景にする", "LOOKS_NEXTBACKDROP": "次の背景", "LOOKS_PREVIOUSBACKDROP": "前の背景", "LOOKS_RANDOMBACKDROP": "どれかの背景", "MOTION_MOVESTEPS": "%1 歩動かす", "MOTION_TURNLEFT": "%1 %2 度回す", "MOTION_TURNRIGHT": "%1 %2 度回す", "MOTION_POINTINDIRECTION": "%1 度に向ける", "MOTION_POINTTOWARDS": "%1 へ向ける", "MOTION_POINTTOWARDS_POINTER": "マウスのポインター", "MOTION_POINTTOWARDS_RANDOM": "どれかの向き", "MOTION_GOTO": "%1 へ行く", "MOTION_GOTO_POINTER": "マウスのポインター", "MOTION_GOTO_RANDOM": "どこかの場所", "MOTION_GOTOXY": "x座標を %1 、y座標を %2 にする", "MOTION_GLIDESECSTOXY": "%1 秒でx座標を %2 に、y座標を %3 に変える", "MOTION_GLIDETO": "%1 秒で %2 へ行く", "MOTION_GLIDETO_POINTER": "マウスのポインター", "MOTION_GLIDETO_RANDOM": "どこかの場所", "MOTION_CHANGEXBY": "x座標を %1 ずつ変える", "MOTION_SETX": "x座標を %1 にする", "MOTION_CHANGEYBY": "y座標を %1 ずつ変える", "MOTION_SETY": "y座標を %1 にする", "MOTION_IFONEDGEBOUNCE": "もし端に着いたら、跳ね返る", "MOTION_SETROTATIONSTYLE": "回転方法を %1 にする", "MOTION_SETROTATIONSTYLE_LEFTRIGHT": "左右のみ", "MOTION_SETROTATIONSTYLE_DONTROTATE": "回転しない", "MOTION_SETROTATIONSTYLE_ALLAROUND": "自由に回転", "MOTION_XPOSITION": "x座標", "MOTION_YPOSITION": "y座標", "MOTION_DIRECTION": "向き", "MOTION_SCROLLRIGHT": "右に %1 スクロールする", "MOTION_SCROLLUP": "上に %1 スクロールする", "MOTION_ALIGNSCENE": "スクロール位置を %1 にする", "MOTION_ALIGNSCENE_BOTTOMLEFT": "左下", "MOTION_ALIGNSCENE_BOTTOMRIGHT": "右下", "MOTION_ALIGNSCENE_MIDDLE": "中央", "MOTION_ALIGNSCENE_TOPLEFT": "左上", "MOTION_ALIGNSCENE_TOPRIGHT": "右上", "MOTION_XSCROLL": "x方向のスクロール量", "MOTION_YSCROLL": "y方向のスクロール方向", "MOTION_STAGE_SELECTED": "ステージが選択されました: 動きブロックはありません", "OPERATORS_ADD": "%1 + %2", "OPERATORS_SUBTRACT": "%1 - %2", "OPERATORS_MULTIPLY": "%1 * %2", "OPERATORS_DIVIDE": "%1 / %2", "OPERATORS_RANDOM": "%1 から %2 までの乱数", "OPERATORS_GT": "%1 > %2", "OPERATORS_LT": "%1 < %2", "OPERATORS_EQUALS": "%1 = %2", "OPERATORS_AND": "%1 かつ %2", "OPERATORS_OR": "%1 または %2", "OPERATORS_NOT": "%1 ではない", "OPERATORS_JOIN": "%1 と %2", "OPERATORS_JOIN_APPLE": "りんご", "OPERATORS_JOIN_BANANA": "バナナ", "OPERATORS_LETTEROF": "%2 の %1 番目の文字", "OPERATORS_LETTEROF_APPLE": "り", "OPERATORS_LENGTH": "%1 の長さ", "OPERATORS_CONTAINS": "%1 に %2 が含まれる", "OPERATORS_MOD": "%1 を %2 で割った余り", "OPERATORS_ROUND": "%1 を四捨五入", "OPERATORS_MATHOP": "%2 の %1", "OPERATORS_MATHOP_ABS": "絶対値", "OPERATORS_MATHOP_FLOOR": "切り下げ", "OPERATORS_MATHOP_CEILING": "切り上げ", "OPERATORS_MATHOP_SQRT": "平方根", "OPERATORS_MATHOP_SIN": "sin", "OPERATORS_MATHOP_COS": "cos", "OPERATORS_MATHOP_TAN": "tan", "OPERATORS_MATHOP_ASIN": "asin", "OPERATORS_MATHOP_ACOS": "acos", "OPERATORS_MATHOP_ATAN": "atan", "OPERATORS_MATHOP_LN": "ln", "OPERATORS_MATHOP_LOG": "log", "OPERATORS_MATHOP_EEXP": "e ^", "OPERATORS_MATHOP_10EXP": "10 ^", "PROCEDURES_DEFINITION": "定義 %1", "SENSING_TOUCHINGOBJECT": "%1 に触れた", "SENSING_TOUCHINGOBJECT_POINTER": "マウスのポインター", "SENSING_TOUCHINGOBJECT_EDGE": "端", "SENSING_TOUCHINGCOLOR": "%1 色に触れた", "SENSING_COLORISTOUCHINGCOLOR": "%1 色が %2 色に触れた", "SENSING_DISTANCETO": "%1 までの距離", "SENSING_DISTANCETO_POINTER": "マウスのポインター", "SENSING_ASKANDWAIT": "%1 と聞いて待つ", "SENSING_ASK_TEXT": "あなたの名前は何ですか?", "SENSING_ANSWER": "答え", "SENSING_KEYPRESSED": "%1 キーが押された", "SENSING_MOUSEDOWN": "マウスが押された", "SENSING_MOUSEX": "マウスのx座標", "SENSING_MOUSEY": "マウスのy座標", "SENSING_SETDRAGMODE": "ドラッグ %1 ようにする", "SENSING_SETDRAGMODE_DRAGGABLE": "できる", "SENSING_SETDRAGMODE_NOTDRAGGABLE": "できない", "SENSING_LOUDNESS": "音量", "SENSING_LOUD": "うるさい", "SENSING_TIMER": "タイマー", "SENSING_RESETTIMER": "タイマーをリセット", "SENSING_OF": "%2 の %1", "SENSING_OF_XPOSITION": "x座標", "SENSING_OF_YPOSITION": "y座標", "SENSING_OF_DIRECTION": "向き", "SENSING_OF_COSTUMENUMBER": "コスチューム #", "SENSING_OF_COSTUMENAME": "コスチューム名", "SENSING_OF_SIZE": "大きさ", "SENSING_OF_VOLUME": "音量", "SENSING_OF_BACKDROPNUMBER": "背景 #", "SENSING_OF_BACKDROPNAME": "背景の名前", "SENSING_OF_STAGE": "ステージ", "SENSING_CURRENT": "現在の %1", "SENSING_CURRENT_YEAR": "年", "SENSING_CURRENT_MONTH": "月", "SENSING_CURRENT_DATE": "日", "SENSING_CURRENT_DAYOFWEEK": "曜日", "SENSING_CURRENT_HOUR": "時", "SENSING_CURRENT_MINUTE": "分", "SENSING_CURRENT_SECOND": "秒", "SENSING_DAYSSINCE2000": "2000年からの日数", "SENSING_USERNAME": "ユーザー名", "SENSING_USERID": "ユーザーID", "SOUND_PLAY": "%1 の音を鳴らす", "SOUND_PLAYUNTILDONE": "終わるまで %1 の音を鳴らす", "SOUND_STOPALLSOUNDS": "すべての音を止める", "SOUND_SETEFFECTO": "%1 の効果を %2 にする", "SOUND_CHANGEEFFECTBY": "%1 の効果を %2 ずつ変える", "SOUND_CLEAREFFECTS": "音の効果をなくす", "SOUND_EFFECTS_PITCH": "ピッチ", "SOUND_EFFECTS_PAN": "左右にパン", "SOUND_CHANGEVOLUMEBY": "音量を %1 ずつ変える", "SOUND_SETVOLUMETO": "音量を %1 %にする", "SOUND_VOLUME": "音量", "SOUND_RECORD": "録音...", "CATEGORY_MOTION": "動き", "CATEGORY_LOOKS": "見た目", "CATEGORY_SOUND": "音", "CATEGORY_EVENTS": "イベント", "CATEGORY_CONTROL": "制御", "CATEGORY_SENSING": "調べる", "CATEGORY_OPERATORS": "演算", "CATEGORY_VARIABLES": "変数", "CATEGORY_MYBLOCKS": "ブロック定義", "DUPLICATE": "複製", "DELETE": "削除", "ADD_COMMENT": "コメントを追加", "REMOVE_COMMENT": "コメントを削除", "DELETE_BLOCK": "ブロックを削除", "DELETE_X_BLOCKS": "%1 個のブロックを削除", "DELETE_ALL_BLOCKS": "%1 個のブロックをすべて削除しますか?", "CLEAN_UP": "きれいにする", "HELP": "ヘルプ", "UNDO": "取り消し", "REDO": "やり直し", "EDIT_PROCEDURE": "編集", "SHOW_PROCEDURE_DEFINITION": "定義へ行く", "WORKSPACE_COMMENT_DEFAULT_TEXT": "コメントを書く...", "COLOUR_HUE_LABEL": "色", "COLOUR_SATURATION_LABEL": "鮮やかさ", "COLOUR_BRIGHTNESS_LABEL": "明るさ", "CHANGE_VALUE_TITLE": "値を変える:", "RENAME_VARIABLE": "変数名を変更", "RENAME_VARIABLE_TITLE": "変数\"%1\"をすべて以下の名前に変える:", "RENAME_VARIABLE_MODAL_TITLE": "変数名を変更", "NEW_VARIABLE": "変数を作る", "NEW_VARIABLE_TITLE": "新しい変数名:", "VARIABLE_MODAL_TITLE": "新しい変数", "VARIABLE_ALREADY_EXISTS": "変数\"%1\"はすでに存在します。", "VARIABLE_ALREADY_EXISTS_FOR_ANOTHER_TYPE": "変数\"%1\"は\"%2\"型の変数としてすでに存在します。", "DELETE_VARIABLE_CONFIRMATION": "変数\"%2\"が使われている %1 箇所も削除しますか?", "CANNOT_DELETE_VARIABLE_PROCEDURE": "変数\"%1\"は定義\"%2\"で使われているため削除できません", "DELETE_VARIABLE": "変数\"%1\"を削除", "NEW_PROCEDURE": "ブロックを作る", "PROCEDURE_ALREADY_EXISTS": "定義\"%1\"はすでに存在します。", "PROCEDURE_DEFAULT_NAME": "ブロック名", "PROCEDURE_USED": "ブロック定義を削除するには、まずそのブロックを使っている箇所を消してください。 ", "NEW_LIST": "リストを作る", "NEW_LIST_TITLE": "新しいリスト名:", "LIST_MODAL_TITLE": "新しいリスト", "LIST_ALREADY_EXISTS": "リスト\"%1\"はすでに存在します。", "RENAME_LIST_TITLE": "リスト\"%1\"をすべて以下の名前に変える:", "RENAME_LIST_MODAL_TITLE": "リスト名を変更", "DEFAULT_LIST_ITEM": "なにか", "DELETE_LIST": "リスト「%1」を削除する", "RENAME_LIST": "リスト名を変更", "NEW_BROADCAST_MESSAGE": "新しいメッセージ", "NEW_BROADCAST_MESSAGE_TITLE": "新しいメッセージ名:", "BROADCAST_MODAL_TITLE": "新しいメッセージ", "DEFAULT_BROADCAST_MESSAGE_NAME": "メッセージ1"};
+const MEDIA = "https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.20220318143026/media/";
 
 /* ================= 世界 (単位: cm) ================= */
 const W = 200, H = 200;                 // コースは 2m x 2m (4 m^2)。画像を正方形に合わせて貼る
@@ -165,11 +173,10 @@ const WHEEL_R = 3.2, TRACK = 11.5;      // 車輪の半径 / 左右の車輪の�
 const RPM_TO_CMS = Math.PI * WHEEL_R * 2 / 60;   // 1 rpm あたりの cm/s
 const POWER_TO_RPM = 1.6;               // 動力 1% あたりの rpm (100% = 160 rpm)
 const SENS_F = 9;                       // 車輪の軸からセンサーまでの距離
-const SENS_OFF = [-2.4, -0.8, 0.8, 2.4];// L2 L1 R1 R2 (右が +)
+const SENS_OFF = [-1.5, -0.5, 0.5, 1.5];// L2 L1 R1 R2 (右が +。間隔 1cm)
 const SENS_POS = [-3, -1, 1, 3];
 const DT = 1/60;
 
-/* 画像上の色マスの中心 (ピクセル) → cm */
 const IMG_W = 593, IMG_H = 445;
 const px2cm = (px, py) => [ (px/IMG_W - .5) * W, (.5 - py/IMG_H) * H ];
 const ORDER = [
@@ -181,9 +188,10 @@ const ORDER = [
 const MS = {step:0, done:false, t:0};
 
 /* ================= 状態 ================= */
-const S = {x:0, y:0, d:0, odo:0, em1:0, em2:0, vL:0, vR:0, sens:[0,0,0,0], manual:false, view:"orbit", simT:0};
+// em1 / em2: 左右の車輪の回転速度 (rpm)。mBlock のブロックと同じく、どちらも正の値が前進
+const S = {x:0, y:0, d:0, odo:0, em1:0, em2:0, vL:0, vR:0, angL:0, angR:0, sens:[0,0,0,0], manual:false, view:"orbit", simT:0};
 const keys = {};
-let startLineX = -23.5;                 // 画像から読み取った線の位置 (読み込み後に更新)
+let startLineX = -23.5;
 
 /* ================= 3D ================= */
 const canvas = document.getElementById("c");
@@ -213,7 +221,6 @@ fieldTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({map:fieldTex, roughness:.95}));
 ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
 
-/* センサー判定用: 同じ画像を 1cm = 5px のキャンバスへ */
 const SC = 5;
 let pix = null;
 const img = new Image();
@@ -224,7 +231,7 @@ img.onload = function(){
   cx.drawImage(img, 0, 0, cv.width, cv.height);
   pix = cx.getImageData(0, 0, cv.width, cv.height).data;
   findLine();
-  if(!running) resetPose();
+  if(!isRunning()) resetPose();
 };
 img.src = FIELD_IMG;
 function rgbAt(x, y){
@@ -246,7 +253,7 @@ function colorName(x, y){
   if(r > 200 && g > 200 && b > 200) return "white";
   return null;
 }
-function findLine(){                       // 中央の四角の左の線の中心を探す
+function findLine(){
   let sum = 0, n = 0;
   for(let x = -32; x <= -14; x += .1){ if(isBlack(x, 0)){ sum += x; n++; } }
   if(n) startLineX = sum / n;
@@ -277,7 +284,6 @@ const sensMats = [], sensMeshes = SENS_OFF.map(() => {
   scene.add(m); sensMats.push(mat); return m;
 });
 
-/* 走った軌跡 */
 const MAX_TRAIL = 8000;
 const trailGeo = new THREE.BufferGeometry();
 const trailPos = new Float32Array(MAX_TRAIL * 3);
@@ -296,39 +302,40 @@ function trailPush(x, y){
 
 /* ================= ロボットの動き ================= */
 const rad = a => a * Math.PI / 180;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function sensorXY(i, f){
   const r = rad(S.d), o = SENS_OFF[i], F = f === undefined ? SENS_F : f;
   return [S.x + F*Math.sin(r) + o*Math.cos(r), S.y + F*Math.cos(r) - o*Math.sin(r)];
 }
 function readSensors(){ for(let i=0;i<4;i++){ const p = sensorXY(i); S.sens[i] = isBlack(p[0], p[1]) ? 1 : 0; } }
-function lineOffset(){                      // -100 (左) 〜 +100 (右)。線が見えないときは 0
+function lineOffset(){
   let sum = 0, n = 0;
   for(let i=0;i<4;i++) if(S.sens[i]){ sum += SENS_POS[i]; n++; }
   return n ? sum / n * 33.3 : 0;
 }
 
 function physics(){
-  if(!running && S.manual){
+  if(!isRunning() && S.manual){
     const fwd = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0);
     const trn = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
-    const l = fwd*100 + trn*60, r = fwd*100 - trn*60;
-    S.em1 = l; S.em2 = -r;
-  } else if(!running){ S.em1 = 0; S.em2 = 0; }
-  S.vL = S.em1 * RPM_TO_CMS;                // 左の車輪 (EM1): 正で前進
-  S.vR = -S.em2 * RPM_TO_CMS;               // 右の車輪 (EM2): 向きが逆なので負で前進
+    S.em1 = fwd*100 + trn*60; S.em2 = fwd*100 - trn*60;
+  } else if(!isRunning()){ S.em1 = 0; S.em2 = 0; }
+  S.vL = S.em1 * RPM_TO_CMS;
+  S.vR = S.em2 * RPM_TO_CMS;
+  S.angL += S.em1 * 6 * DT; S.angR += S.em2 * 6 * DT;
   const v = (S.vL + S.vR) / 2, w = (S.vL - S.vR) / TRACK;       // w: 時計回りが +
   const dd = w * DT * 180 / Math.PI;
   const r = rad(S.d + dd/2);
   S.d += dd;
   S.x += v * DT * Math.sin(r); S.y += v * DT * Math.cos(r);
-  S.x = Math.max(-W/2 + 3, Math.min(W/2 - 3, S.x)); S.y = Math.max(-H/2 + 3, Math.min(H/2 - 3, S.y));
+  S.x = clamp(S.x, -W/2 + 3, W/2 - 3); S.y = clamp(S.y, -H/2 + 3, H/2 - 3);
   S.odo += Math.abs(v) * DT;
   S.simT += DT;
   readSensors();
-  if(Math.abs(v) > .05 || Math.abs(w) > .02) trailPush(S.x, S.y);
-  // 課題: 車体の中心(車輪の軸)が、順番どおりの色の上にあるか
+  const moving = Math.abs(v) > .05 || Math.abs(w) > .02;
+  if(moving) trailPush(S.x, S.y);
   if(!MS.done){
-    if(running || (S.manual && (Math.abs(v) > .05 || Math.abs(w) > .02))) MS.t += DT;
+    if(isRunning() || (S.manual && moving)) MS.t += DT;
     if(colorName(S.x, S.y) === ORDER[MS.step].k){
       MS.step++; if(MS.step >= ORDER.length) MS.done = true; renderMission();
     }
@@ -337,228 +344,410 @@ function physics(){
 
 /* ================= ブロックから呼ぶ命令 (R) ================= */
 const STOP = {stop:true};
-let running = false, stopFlag = false, waiters = [], t0 = 0, runId = 0;
+let epoch = 0, threadCount = 0, waiters = [], t0 = 0;
+const isRunning = () => threadCount > 0;
 const R = {
-  tick(){ return new Promise((res, rej) => { if(stopFlag) rej(STOP); else waiters.push({res, rej}); }); },
+  tick(){ return new Promise(res => waiters.push(res)); },
   async wait(sec){ const end = S.simT + Math.max(0, +sec || 0); while(S.simT < end) await R.tick(); },
-  power(a, b){ S.em1 = clamp(+a || 0, -100, 100) * POWER_TO_RPM; S.em2 = clamp(+b || 0, -100, 100) * POWER_TO_RPM; },
-  speed(a, b){ S.em1 = clamp(+a || 0, -200, 200); S.em2 = clamp(+b || 0, -200, 200); },
-  stop(){ S.em1 = 0; S.em2 = 0; },
-  async straight(cm, rpm){                 // cm が負なら後退。進み終わるまで待つ
-    const dist = Math.abs(+cm || 0), sp = clamp(Math.abs(+rpm || 0), 0, 200), dir = (+cm || 0) < 0 ? -1 : 1;
-    if(!dist || !sp){ R.stop(); return; }
-    const o0 = S.odo; S.em1 = dir*sp; S.em2 = -dir*sp;
-    while(S.odo - o0 < dist) await R.tick();
-    R.stop();
+  rpm(l, r){ if(l !== null) S.em1 = clamp(+l || 0, -200, 200); if(r !== null) S.em2 = clamp(+r || 0, -200, 200); },
+  stopMotors(port){ if(port !== "EM2") S.em1 = 0; if(port !== "EM1") S.em2 = 0; },
+  async straight(cm, rpm, c){              // cm が負なら後退。進み終わるまで待つ
+    const dist = Math.abs(+cm || 0), sp = clamp(Math.abs(+rpm || 50), 0, 200), dir = (+cm || 0) < 0 ? -1 : 1;
+    if(!dist || !sp){ R.stopMotors(); return; }
+    const o0 = S.odo; S.em1 = dir*sp; S.em2 = dir*sp;
+    while(S.odo - o0 < dist){ await R.tick(); if(c.ep !== epoch) throw STOP; }
+    R.stopMotors();
   },
-  async turn(deg, rpm){                    // deg が正なら右(時計回り)に回転
-    const a = Math.abs(+deg || 0), sp = clamp(Math.abs(+rpm || 0), 0, 200), dir = (+deg || 0) < 0 ? -1 : 1;
-    if(!a || !sp){ R.stop(); return; }
-    const d0 = S.d; S.em1 = dir*sp; S.em2 = dir*sp;
-    while(Math.abs(S.d - d0) < a) await R.tick();
-    R.stop();
-  },
-  line(n){ return !!S.sens[["L2","L1","R1","R2"].indexOf(n)]; },
-  offset(){ return lineOffset(); },
-  colorIs(c){ const p = sensorXY(0, SENS_F); const q = sensorXY(3, SENS_F); return colorName((p[0]+q[0])/2, (p[1]+q[1])/2) === c; },
-  timer(){ return S.simT - t0; },
-  resetTimer(){ t0 = S.simT; }
+  async turn(deg, rpm, c){                 // deg が正なら右(時計回り)に回転
+    const a = Math.abs(+deg || 0), sp = clamp(Math.abs(+rpm || 50), 0, 200), dir = (+deg || 0) < 0 ? -1 : 1;
+    if(!a || !sp){ R.stopMotors(); return; }
+    const d0 = S.d; S.em1 = dir*sp; S.em2 = -dir*sp;
+    while(Math.abs(S.d - d0) < a){ await R.tick(); if(c.ep !== epoch) throw STOP; }
+    R.stopMotors();
+  }
 };
-function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-function flushWaiters(){ const w = waiters; waiters = []; w.forEach(x => x.res()); }
+function flushWaiters(){ const w = waiters; waiters = []; w.forEach(f => f()); }
 
-/* ================= ブロック (Blockly) ================= */
+/* ================= ブロック (scratch-blocks。mBlock と同じ描画ライブラリ) ================= */
 const ui = {
   hudStatus: document.getElementById("hudStatus"), hudInfo: document.getElementById("hudInfo"),
   sens: ["sL2","sL1","sR1","sR2"].map(id => document.getElementById(id)),
   kOff: document.getElementById("kOff"), kWheel: document.getElementById("kWheel"), kOdo: document.getElementById("kOdo"),
   msg: document.getElementById("msg")
 };
-let ws = null, blocklyOK = typeof Blockly !== "undefined" && Blockly.JavaScript;
-function toast(t){ ui.msg.textContent = t; ui.msg.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => ui.msg.classList.remove("show"), 4500); }
+function toast(t){ ui.msg.textContent = t; ui.msg.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => ui.msg.classList.remove("show"), 5000); }
 
-const NUM = (n) => `<shadow type="math_number"><field name="NUM">${n}</field></shadow>`;
-const TOOLBOX = `<xml>
-<category name="スタート" colour="45"><block type="mbot2_start"></block></category>
-<category name="動き" colour="205">
-  <block type="mbot2_straight"><value name="CM">${NUM(30)}</value><value name="RPM">${NUM(60)}</value></block>
-  <block type="mbot2_turn"><value name="DEG">${NUM(90)}</value><value name="RPM">${NUM(40)}</value></block>
-  <block type="mbot2_drive_power"><value name="A">${NUM(40)}</value><value name="B">${NUM(-40)}</value></block>
-  <block type="mbot2_drive_speed"><value name="A">${NUM(60)}</value><value name="B">${NUM(-60)}</value></block>
-  <block type="mbot2_stop"></block>
-</category>
-<category name="センサー" colour="180">
-  <block type="mbot2_line"></block>
-  <block type="mbot2_offset"></block>
-  <block type="mbot2_color"></block>
-  <block type="mbot2_timer"></block>
-  <block type="mbot2_timer_reset"></block>
-</category>
-<category name="制御" colour="120">
-  <block type="mbot2_forever"></block>
-  <block type="mbot2_wait"><value name="SEC">${NUM(1)}</value></block>
-  <block type="controls_repeat_ext"><value name="TIMES">${NUM(4)}</value></block>
-  <block type="controls_whileUntil"></block>
-  <block type="controls_if"></block>
-  <block type="controls_if"><mutation else="1"></mutation></block>
-  <block type="controls_flow_statements"></block>
-</category>
-<category name="論理" colour="210">
-  <block type="logic_compare"></block><block type="logic_operation"></block><block type="logic_negate"></block><block type="logic_boolean"></block>
-</category>
-<category name="演算" colour="230">
-  <block type="math_number"><field name="NUM">0</field></block><block type="math_arithmetic"></block>
-  <block type="math_single"></block><block type="math_round"></block>
-</category>
-<category name="変数" colour="330" custom="VARIABLE"></category>
-</xml>`;
+const svgURI = s => "data:image/svg+xml;utf8," + encodeURIComponent(s);
+const ICON = {
+  mbot2: svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26"><rect x="5" y="6" width="18" height="14" rx="4" fill="#fff"/><rect x="1" y="9" width="5" height="11" rx="2" fill="#fff" opacity=".85"/><rect x="22" y="9" width="5" height="11" rx="2" fill="#fff" opacity=".85"/><rect x="10" y="9" width="8" height="5" rx="1.2" fill="#05A6FF"/><circle cx="14" cy="17" r="1.4" fill="#05A6FF"/></svg>'),
+  cyberpi: svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26"><rect x="3" y="5" width="22" height="16" rx="3" fill="#fff"/><rect x="6" y="8" width="16" height="7" rx="1" fill="#CC9900"/><circle cx="8" cy="18" r="1.2" fill="#CC9900"/><circle cx="20" cy="18" r="1.2" fill="#CC9900"/></svg>'),
+  quad: svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="28" height="26" viewBox="0 0 28 26"><rect x="3" y="7" width="22" height="12" rx="2.5" fill="#fff"/><circle cx="7.5" cy="13" r="2" fill="#0AAD80"/><circle cx="12" cy="13" r="2" fill="#0AAD80"/><circle cx="16.5" cy="13" r="2" fill="#0AAD80"/><circle cx="21" cy="13" r="2" fill="#0AAD80"/></svg>'),
+  catMbot2: svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="9" y="12" width="22" height="16" rx="5" fill="#05A6FF"/><rect x="4" y="16" width="6" height="12" rx="2.5" fill="#0086D0"/><rect x="30" y="16" width="6" height="12" rx="2.5" fill="#0086D0"/><rect x="15" y="16" width="10" height="6" rx="1.5" fill="#fff"/></svg>'),
+  catQuad: svgURI('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect x="5" y="12" width="30" height="16" rx="3" fill="#0AAD80"/><circle cx="11" cy="20" r="2.6" fill="#fff"/><circle cx="17" cy="20" r="2.6" fill="#fff"/><circle cx="23" cy="20" r="2.6" fill="#fff"/><circle cx="29" cy="20" r="2.6" fill="#fff"/></svg>')
+};
+
+const blocklyOK = typeof Blockly !== "undefined" && Blockly.Blocks && Blockly.inject;
+let ws = null;
+
+/* ----- メニュー (mBlock の文言) ----- */
+const DIR4 = [["前進する","forward"],["後退する","backward"],["左折する","turn_left"],["右折する","turn_right"]];
+const DIR2 = [["前進する","forward"],["後退する","backward"]];
+const UNIT = [["cm","cm"],["インチ","inch"]];
+const TURN = [["左折する","cw"],["右折する","ccw"]];
+const EM3 = [["左車輪(EM1)","EM1"],["右車輪(EM2)","EM2"],["全て","ALL"]];
+const EMSTOP = [["(1) EM1","EM1"],["(2) M2","EM2"],["全て","ALL"]];
+const EM2SEL = [["(1) EM1","EM1"],["(2) M2","EM2"]];
+const MODE = [["回転速度(RPM)","speed"],["強さ(%)","power"]];
+const LOCK = [["有効","lock"],["無効","unlock"]];
+const PARA = [["キャリブレーションする","calibrate"],["reset","reset"]];
+const QIDX = [1,2,3,4,5,6,7,8].map(n => [String(n), String(n)]);
+const QCOL11 = [["線","line"],["背景","background"],["白","white"],["赤","red"],["黄色","yellow"],["緑","green"],["シアン","cyan"],["青","blue"],["紫","purple"],["黒","black"],["自己定義の色","custom"]];
+const QCOL10 = [["線","line"],["背景","background"],["白","white"],["赤","red"],["緑","green"],["青","blue"],["黄","yellow"],["シアン","cyan"],["紫","purple"],["黒","black"]];
+const QPROBE = [["(1) R2","1"],["(2) R1","2"],["(3) L1","3"],["(4) L2","4"],["ランダム","random"]];
+const QPROBE4 = QPROBE.slice(0, 4);
+const QKIND = [["オブジェクトのR値","r"],["オブジェクトのG値","g"],["オブジェクトのB値","b"],["オブジェクトのグレースケール","gray"],["周囲光の明るさ","light"],["色","color"]];
+const QST2 = [0,1,2,3].map(n => ["(" + n + ") " + n.toString(2).padStart(2, "0"), String(n)]);
+const QST4 = Array.from({length:16}, (_, n) => ["(" + n + ") " + n.toString(2).padStart(4, "0"), String(n)]);
+const QFILL = [["赤","red"],["緑","green"],["青","blue"]];
+const QMODE = [["標準","normal"],["色を強化しました","enhanced"]];
 
 if(blocklyOK){
-  const J = [
-    {type:"mbot2_start", message0:"▶ プログラムを開始したとき", nextStatement:null, colour:45, tooltip:"このブロックの下につないだブロックが実行されます"},
-    {type:"mbot2_straight", message0:"%1 %2 cm  速さ %3 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
-     args0:[{type:"field_dropdown", name:"DIR", options:[["前進","F"],["後退","B"]]}, {type:"input_value", name:"CM", check:"Number"}, {type:"input_value", name:"RPM", check:"Number"}],
-     tooltip:"指定した距離だけ進んでから止まります"},
-    {type:"mbot2_turn", message0:"%1 に %2 度 回転  速さ %3 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
-     args0:[{type:"field_dropdown", name:"DIR", options:[["右","R"],["左","L"]]}, {type:"input_value", name:"DEG", check:"Number"}, {type:"input_value", name:"RPM", check:"Number"}],
-     tooltip:"指定した角度だけその場で回転します"},
-    {type:"mbot2_drive_power", message0:"モーター動力  EM1 %1 %  EM2 %2 %", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
-     args0:[{type:"input_value", name:"A", check:"Number"}, {type:"input_value", name:"B", check:"Number"}],
-     tooltip:"EM1 は左の車輪。EM2 は右の車輪で、向きが逆なので前進は負の値です"},
-    {type:"mbot2_drive_speed", message0:"モーター速度  EM1 %1 rpm  EM2 %2 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
-     args0:[{type:"input_value", name:"A", check:"Number"}, {type:"input_value", name:"B", check:"Number"}],
-     tooltip:"EM1 は左の車輪。EM2 は右の車輪で、向きが逆なので前進は負の値です"},
-    {type:"mbot2_stop", message0:"モーターを止める", previousStatement:null, nextStatement:null, colour:205},
-    {type:"mbot2_line", message0:"クアッドRGB  %1 が黒い線の上", output:"Boolean", colour:180,
-     args0:[{type:"field_dropdown", name:"S", options:[["L2","L2"],["L1","L1"],["R1","R1"],["R2","R2"]]}]},
-    {type:"mbot2_offset", message0:"クアッドRGB  ライン偏差 (-100〜100)", output:"Number", colour:180, tooltip:"線が右にあるほど大きく、左にあるほど小さくなります。線が見えないときは 0"},
-    {type:"mbot2_color", message0:"足元の色が %1", output:"Boolean", colour:180,
-     args0:[{type:"field_dropdown", name:"C", options:[["緑","green"],["青","blue"],["赤","red"],["黄","yellow"],["白","white"],["黒","black"]]}]},
-    {type:"mbot2_timer", message0:"タイマー (秒)", output:"Number", colour:180},
-    {type:"mbot2_timer_reset", message0:"タイマーをリセット", previousStatement:null, nextStatement:null, colour:180},
-    {type:"mbot2_forever", message0:"ずっと %1 %2", previousStatement:null, colour:120,
-     args0:[{type:"input_dummy"}, {type:"input_statement", name:"DO"}]},
-    {type:"mbot2_wait", message0:"%1 秒待つ", inputsInline:true, previousStatement:null, nextStatement:null, colour:120,
-     args0:[{type:"input_value", name:"SEC", check:"Number"}]}
-  ];
-  Blockly.defineBlocksWithJsonArray(J);
-  const G = Blockly.JavaScript, F = G.forBlock;
-  const val = (b, n) => G.valueToCode(b, n, 99) || "0";
-  F.mbot2_start = () => "";
-  F.mbot2_straight = (b) => `await R.straight(${b.getFieldValue("DIR") === "B" ? "-" : ""}(${val(b,"CM")}), ${val(b,"RPM")});\n`;
-  F.mbot2_turn = (b) => `await R.turn(${b.getFieldValue("DIR") === "L" ? "-" : ""}(${val(b,"DEG")}), ${val(b,"RPM")});\n`;
-  F.mbot2_drive_power = (b) => `R.power(${val(b,"A")}, ${val(b,"B")});\n`;
-  F.mbot2_drive_speed = (b) => `R.speed(${val(b,"A")}, ${val(b,"B")});\n`;
-  F.mbot2_stop = () => "R.stop();\n";
-  F.mbot2_line = (b) => [`R.line("${b.getFieldValue("S")}")`, 0];
-  F.mbot2_offset = () => ["R.offset()", 0];
-  F.mbot2_color = (b) => [`R.colorIs("${b.getFieldValue("C")}")`, 0];
-  F.mbot2_timer = () => ["R.timer()", 0];
-  F.mbot2_timer_reset = () => "R.resetTimer();\n";
-  F.mbot2_forever = (b) => `while (true) {\n${G.addLoopTrap(G.statementToCode(b, "DO"), b)}}\n`;
-  F.mbot2_wait = (b) => `await R.wait(${val(b,"SEC")});\n`;
+  Object.assign(Blockly.Msg, JA_MSG);
 
-  ws = Blockly.inject("blockly", {
-    toolbox: Blockly.utils.xml.textToDom(TOOLBOX), trashcan:true, sounds:false,
-    zoom:{controls:true, wheel:true, startScale:.85, minScale:.4, maxScale:1.6},
-    grid:{spacing:24, length:3, colour:"#e3e7ee", snap:true}
-  });
-  new ResizeObserver(() => Blockly.svgResize(ws)).observe(document.getElementById("blocks"));
+  const EV = {colour:"#FFBF00", colourSecondary:"#E6AC00", colourTertiary:"#CC9900"};
+  const CT = {colour:"#FFAB19", colourSecondary:"#EC9C13", colourTertiary:"#CF8B17"};
+  const CH = {colour:"#05A6FF", colourSecondary:"#0097EA", colourTertiary:"#0086D0"};
+  const QD = {colour:"#0AAD80", colourSecondary:"#09A076", colourTertiary:"#088A66"};
+  const img = src => ({type:"field_image", src, width:28, height:26});
+  const inp = name => ({type:"input_value", name});
+  const dd = (name, options) => ({type:"field_dropdown", name, options});
+  const define = (type, json) => { Blockly.Blocks[type] = { init(){ this.jsonInit(json); } }; };
+  const stmt = (type, col, message, args) => define(type, Object.assign({message0:message, args0:args, extensions:["shape_statement"]}, col));
+  const hat  = (type, col, message, args) => define(type, Object.assign({message0:message, args0:args, extensions:["shape_hat"]}, col));
+  const rep  = (type, col, message, args, kind) => define(type, Object.assign({message0:message, args0:args, extensions:[kind === "bool" ? "output_boolean" : "output_number"]}, col));
+
+  /* イベント */
+  hat("cyberpi_when_launch", EV, "%1 CyberPiが起動したとき", [img(ICON.cyberpi)]);
+  hat("cyberpi_when_button_press", EV, "%1 ボタン %2 が押されたとき", [img(ICON.cyberpi), dd("BUTTON", [["A","a"],["B","b"]])]);
+  /* 制御 */
+  define("control_if_repeat_new", Object.assign({message0:"%1 が繰り返す間", args0:[{type:"input_value", name:"CONDITION", check:"Boolean"}],
+    message1:"%1", args1:[{type:"input_statement", name:"SUBSTACK"}], extensions:["shape_statement"]}, CT));
+  define("control_break_new", Object.assign({message0:"break", extensions:["shape_end"]}, CT));
+  define("control_continue_new", Object.assign({message0:"続行する", extensions:["shape_end"]}, CT));
+  /* mBot2 シャーシ */
+  stmt("mbot2_move_direction_with_time", CH, "%1 %2 RPMで %3 秒 %4", [img(ICON.mbot2), inp("POWER"), inp("TIME"), dd("DIRECTION", DIR4)]);
+  stmt("mbot2_move_direction_with_rpm", CH, "%1 %2 RPMで %3", [img(ICON.mbot2), inp("POWER"), dd("DIRECTION", DIR4)]);
+  stmt("mbot2_move_straight_with_cm_and_inch", CH, "%1 完了するまで %2 %3 %4", [img(ICON.mbot2), inp("POWER"), dd("UNIT", UNIT), dd("DIRECTION", DIR2)]);
+  stmt("mbot2_cw_and_ccw_with_angle", CH, "%1 完了するまで %2 に %3 °動かす", [img(ICON.mbot2), dd("TURN", TURN), inp("ANGLE")]);
+  stmt("mbot2_encoder_motor_set_with_time", CH, "エンコーダーモーター %1 %2 を %3 %4 で %5 秒回転する", [dd("EM", EM3), img(ICON.mbot2), inp("LEFT_POWER"), dd("MODE", MODE), inp("TIME")]);
+  stmt("mbot2_encoder_motor_set", CH, "エンコーダーモーター %1 %2 を %3 %4 で回転する", [dd("EM", EM3), img(ICON.mbot2), inp("LEFT_POWER"), dd("MODE", MODE)]);
+  stmt("mbot2_encoder_motor_set_with_time_angle_and_circle", CH, "エンコーダーモーター %1 %2 を %3 °回転する", [dd("EM", EM3), img(ICON.mbot2), inp("LEFT_POWER")]);
+  stmt("mbot2_encoder_motor_drive_speed2", CH, "エンコーダーモーター EM1 %1 が %2 RPM、エンコーダーモーター EM2 %3 が %4 RPMで回転する", [img(ICON.mbot2), inp("LEFT_POWER"), img(ICON.mbot2), inp("RIGHT_POWER")]);
+  stmt("mbot2_encoder_motor_drive_power", CH, "エンコーダーモーターEM1 %1 が %2 %の強さ、エンコーダーモーターEM2 %3 が %4 %の強さで回転する", [img(ICON.mbot2), inp("LEFT_POWER"), img(ICON.mbot2), inp("RIGHT_POWER")]);
+  stmt("mbot2_encoder_motor_stop", CH, "エンコーダーモーター %1 を停止する", [dd("EM", EMSTOP)]);
+  rep("mbot2_encoder_motor_get_speed", CH, "エンコーダーモーター %1 の %2 %3", [dd("EM", EM2SEL), img(ICON.mbot2), dd("MODE", MODE)], "num");
+  rep("mbot2_encoder_motor_get_angle", CH, "エンコーダーモーター %1 %2 の角度(°)", [dd("EM", EM2SEL), img(ICON.mbot2)], "num");
+  stmt("mbot2_encoder_motor_reset_angle", CH, "エンコーダーモーター %1 %2 の角度をリセットする", [dd("EM", EM2SEL), img(ICON.mbot2)]);
+  stmt("mbot2_encoder_motor_lock_and_unlock", CH, "エンコーダーモーター %1 のオートロック %2", [dd("EM", EM2SEL), dd("LOCK", LOCK)]);
+  stmt("mbot2_set_para", CH, "%1 シャーシパラメータ", [dd("PARA", PARA)]);
+  /* クアッドRGBセンサー */
+  rep("mbuild_quad_color_sensor_get_sta_with_inputMenu", QD, "%1 クワッドrgbセンサー %2 L1, R1's %3 in status %4 ?", [img(ICON.quad), dd("INDEX", QIDX), dd("COLOR", QCOL11), dd("STATUS", QST2)], "bool");
+  rep("BLOCK_1618397596925", QD, "%1 クアッドRGBセンサー %2 がL1、R1の %3 色のステータス (0~3）", [img(ICON.quad), dd("INDEX", QIDX), dd("COLOR", QCOL11)], "num");
+  rep("BLOCK_1618364921511", QD, "%1 クワッドRGBセンサー %2 %3 状態 %4 ?", [img(ICON.quad), dd("INDEX", QIDX), dd("COLOR", QCOL11), dd("STATUS", QST4)], "bool");
+  rep("BLOCK_1618397679204", QD, "%1 クアッドRGBセンサー %2 %3 色のステータス (0~15)", [img(ICON.quad), dd("INDEX", QIDX), dd("COLOR", QCOL11)], "num");
+  rep("mbuild_quad_color_sensor_is_line_and_background", QD, "%1 クワッド rgb センサー %2 プローブ %3 が %4 を検出しますか?", [img(ICON.quad), dd("INDEX", QIDX), dd("PROBE", QPROBE), dd("COLOR", QCOL10)], "bool");
+  rep("mbuild_quad_color_sensor_get_rgb_gray_light", QD, "%1 クワッド rgb センサー %2 プローブ %3 が %4 を検出しますか?", [img(ICON.quad), dd("INDEX", QIDX), dd("PROBE", QPROBE4), dd("KIND", QKIND)], "num");
+  rep("mbuild_quad_color_sensor_get_off_track", QD, "%1 クアッドRGBセンサー %2 の偏差 (-100~100)", [img(ICON.quad), dd("INDEX", QIDX)], "num");
+  stmt("BLOCK_1618382823173", QD, "%1 クアッドRGBセンサー %2 のライントレースのフィルライトを %3 色にする", [img(ICON.quad), dd("INDEX", QIDX), dd("FILL", QFILL)]);
+  stmt("BLOCK_1620904215289", QD, "%1 クワッドrgbセンサー %2 がフィルライトをオフにします", [img(ICON.quad), dd("INDEX", QIDX)]);
+  stmt("BLOCK_1626250042594", QD, "%1 クワッド rgb センサー %2 はR %3 G %4 B %5 は許容差 %6 に色を定義する", [img(ICON.quad), dd("INDEX", QIDX), inp("R"), inp("G"), inp("B"), inp("TOLERANCE")]);
+  stmt("BLOCK_1663048571053", QD, "%1 クワッドrgbセンサー %2 はキャリブレーションを行います", [img(ICON.quad), dd("INDEX", QIDX)]);
+  stmt("BLOCK_1663048571165", QD, "%1 色検出モードを %2 に設定する", [img(ICON.quad), dd("MODE", QMODE)]);
 }
 
-/* ----- サンプル (XML) ----- */
+/* ----- ツールボックス (mBlock の初期値どおり) ----- */
+const sh = (type, field, v) => `<shadow type="${type}"><field name="${field}">${v}</field></shadow>`;
+const N = (v) => sh("math_number", "NUM", v), TX = (v) => sh("text", "TEXT", v);
+const blk = (type, o) => { o = o || {};
+  return `<block type="${type}">` + Object.entries(o.f || {}).map(([k, v]) => `<field name="${k}">${v}</field>`).join("") +
+    Object.entries(o.v || {}).map(([k, v]) => `<value name="${k}">${v}</value>`).join("") + `</block>`; };
+const cat = (name, id, colour, sec, body, extra) => `<category name="${name}" id="${id}" colour="${colour}" secondaryColour="${sec}"${extra || ""}>${body}</category>`;
+const TOOLBOX = `<xml style="display:none">` +
+  cat("イベント", "events", "#FFBF00", "#CC9900",
+    blk("cyberpi_when_launch") + blk("cyberpi_when_button_press", {f:{BUTTON:"a"}}) + blk("event_whenflagclicked") + blk("event_whenkeypressed", {f:{KEY_OPTION:"space"}})) +
+  cat("制御", "control", "#FFAB19", "#CF8B17",
+    blk("control_wait", {v:{DURATION:sh("math_positive_number", "NUM", 1)}}) + blk("control_if") +
+    `<block type="control_if_else"></block>` + blk("control_if_repeat_new") + blk("control_repeat_until") + blk("control_forever") +
+    blk("control_repeat", {v:{TIMES:sh("math_whole_number", "NUM", 10)}}) + blk("control_break_new") + blk("control_continue_new") +
+    blk("control_wait_until") + blk("control_stop", {f:{STOP_OPTION:"all"}})) +
+  cat("演算", "operators", "#59C059", "#389438",
+    blk("operator_add", {v:{NUM1:N(""), NUM2:N("")}}) + blk("operator_subtract", {v:{NUM1:N(""), NUM2:N("")}}) +
+    blk("operator_multiply", {v:{NUM1:N(""), NUM2:N("")}}) + blk("operator_divide", {v:{NUM1:N(""), NUM2:N("")}}) +
+    blk("operator_random", {v:{FROM:N(1), TO:N(10)}}) +
+    blk("operator_gt", {v:{OPERAND1:TX(""), OPERAND2:TX(50)}}) + blk("operator_lt", {v:{OPERAND1:TX(""), OPERAND2:TX(50)}}) +
+    blk("operator_equals", {v:{OPERAND1:TX(""), OPERAND2:TX(50)}}) + blk("operator_and") + blk("operator_or") + blk("operator_not") +
+    blk("operator_join", {v:{STRING1:TX("リンゴ"), STRING2:TX("バナナ")}}) + blk("operator_letter_of", {v:{LETTER:sh("math_whole_number", "NUM", 1), STRING:TX("リンゴ")}}) +
+    blk("operator_length", {v:{STRING:TX("リンゴ")}}) + blk("operator_contains", {v:{STRING1:TX("リンゴ"), STRING2:TX("ゴ")}}) +
+    blk("operator_mod", {v:{NUM1:N(""), NUM2:N("")}}) + blk("operator_round", {v:{NUM:N("")}}) +
+    blk("operator_mathop", {f:{OPERATOR:"abs"}, v:{NUM:sh("math_number", "NUM", "")}})) +
+  cat("変数", "data", "#FF8C1A", "#DB6E00", "", ` custom="VARIABLE"`) +
+  cat("mBot2 シャーシ", "mbot2", "#05A6FF", "#0086D0",
+    blk("mbot2_move_direction_with_time", {v:{POWER:N(50), TIME:N(1)}, f:{DIRECTION:"forward"}}) +
+    blk("mbot2_move_direction_with_rpm", {v:{POWER:N(50)}, f:{DIRECTION:"forward"}}) +
+    blk("mbot2_move_straight_with_cm_and_inch", {v:{POWER:N(100)}, f:{UNIT:"cm", DIRECTION:"forward"}}) +
+    blk("mbot2_cw_and_ccw_with_angle", {v:{ANGLE:N(90)}, f:{TURN:"cw"}}) +
+    blk("mbot2_encoder_motor_set_with_time", {v:{LEFT_POWER:N(50), TIME:N(1)}, f:{EM:"EM1", MODE:"speed"}}) +
+    blk("mbot2_encoder_motor_set", {v:{LEFT_POWER:N(50)}, f:{EM:"EM1", MODE:"speed"}}) +
+    blk("mbot2_encoder_motor_set_with_time_angle_and_circle", {v:{LEFT_POWER:N(180)}, f:{EM:"EM1"}}) +
+    blk("mbot2_encoder_motor_drive_speed2", {v:{LEFT_POWER:N(50), RIGHT_POWER:N(50)}}) +
+    blk("mbot2_encoder_motor_drive_power", {v:{LEFT_POWER:N(50), RIGHT_POWER:N(50)}}) +
+    blk("mbot2_encoder_motor_stop", {f:{EM:"ALL"}}) +
+    blk("mbot2_encoder_motor_get_speed", {f:{EM:"EM1", MODE:"speed"}}) + blk("mbot2_encoder_motor_get_angle", {f:{EM:"EM1"}}) +
+    blk("mbot2_encoder_motor_reset_angle", {f:{EM:"EM1"}}) + blk("mbot2_encoder_motor_lock_and_unlock", {f:{EM:"EM1", LOCK:"lock"}}) +
+    blk("mbot2_set_para", {f:{PARA:"calibrate"}}), ` iconURI="${ICON.catMbot2}"`) +
+  cat("クアッドRGBセンサー", "quad", "#0AAD80", "#088A66",
+    blk("mbuild_quad_color_sensor_get_sta_with_inputMenu", {f:{INDEX:"1", COLOR:"line", STATUS:"0"}}) +
+    blk("BLOCK_1618397596925", {f:{INDEX:"1", COLOR:"line"}}) +
+    blk("BLOCK_1618364921511", {f:{INDEX:"1", COLOR:"line", STATUS:"0"}}) +
+    blk("BLOCK_1618397679204", {f:{INDEX:"1", COLOR:"line"}}) +
+    blk("mbuild_quad_color_sensor_is_line_and_background", {f:{INDEX:"1", PROBE:"1", COLOR:"line"}}) +
+    blk("mbuild_quad_color_sensor_get_rgb_gray_light", {f:{INDEX:"1", PROBE:"1", KIND:"r"}}) +
+    blk("mbuild_quad_color_sensor_get_off_track", {f:{INDEX:"1"}}) +
+    blk("BLOCK_1618382823173", {f:{INDEX:"1", FILL:"green"}}) + blk("BLOCK_1620904215289", {f:{INDEX:"1"}}) +
+    blk("BLOCK_1626250042594", {f:{INDEX:"1"}, v:{R:N(0), G:N(0), B:N(0), TOLERANCE:N(50)}}) +
+    blk("BLOCK_1663048571053", {f:{INDEX:"1"}}) + blk("BLOCK_1663048571165", {f:{MODE:"normal"}}), ` iconURI="${ICON.catQuad}"`) +
+  `</xml>`;
+
+if(blocklyOK){
+  try{
+    ws = Blockly.inject("blockly", {
+      toolbox: TOOLBOX, media: MEDIA, sounds: false, scrollbars: true, trashcan: true, readOnly: false,
+      zoom: {controls: true, wheel: true, startScale: 0.675, maxScale: 4, minScale: 0.25, scaleSpeed: 1.2},
+      grid: {spacing: 40, length: 2, colour: "#ddd", snap: false},
+      colours: {workspace: "#FFFFFF", flyout: "#FFFFFF", toolbox: "#FFFFFF", toolboxHover: "#4C97FF", toolboxSelected: "#E9EEF2",
+        scrollbar: "#CECDCE", scrollbarHover: "#CECDCE", insertionMarker: "#000000", insertionMarkerOpacity: .2,
+        fieldShadow: "rgba(255, 255, 255, 0.3)", dragShadowOpacity: .6}
+    });
+    new ResizeObserver(() => Blockly.svgResize(ws)).observe(document.getElementById("blocks"));
+  }catch(e){ ws = null; toast("ブロックエディターの初期化に失敗しました: " + e.message); }
+}
+
+/* ================= サンプル (XML) ================= */
 const X = {
+  num: n => `<shadow type="math_number"><field name="NUM">${+(+n).toFixed(1)}</field></shadow>`,
   b(type, o){ o = o || {};
-    return `<block type="${type}">` + (o.m || "") +
-      Object.entries(o.f || {}).map(([k,v]) => `<field name="${k}">${v}</field>`).join("") +
-      Object.entries(o.v || {}).map(([k,v]) => `<value name="${k}">${v}</value>`).join("") +
-      Object.entries(o.s || {}).map(([k,v]) => `<statement name="${k}">${v}</statement>`).join("") +
+    return `<block type="${type}">` +
+      Object.entries(o.f || {}).map(([k, v]) => `<field name="${k}">${v}</field>`).join("") +
+      Object.entries(o.v || {}).map(([k, v]) => `<value name="${k}">${v}</value>`).join("") +
+      Object.entries(o.s || {}).map(([k, v]) => `<statement name="${k}">${v}</statement>`).join("") +
       (o.n ? `<next>${o.n}</next>` : "") + `</block>`; },
-  num(n){ return X.b("math_number", {f:{NUM:+(+n).toFixed(1)}}); },
   seq(items){ let nx = ""; for(let i = items.length - 1; i >= 0; i--){ const [t, o] = items[i]; nx = X.b(t, Object.assign({}, o, {n:nx})); } return nx; },
-  varGet(){ return `<block type="variables_get"><field name="VAR" id="v_last">last</field></block>`; },
-  arith(op, a, b){ return X.b("math_arithmetic", {f:{OP:op}, v:{A:a, B:b}}); }
+  varGet: () => `<block type="data_variable"><field name="VARIABLE" id="v_last" variabletype="">last</field></block>`,
+  op: (type, a, b) => X.b(type, {v:{NUM1:a, NUM2:b}})
 };
-function setLastBlock(v){ return `<block type="variables_set"><field name="VAR" id="v_last">last</field><value name="VALUE">${X.num(v)}</value>__NEXT__</block>`; }
+function setLastXml(v, next){
+  return `<block type="data_setvariableto"><field name="VARIABLE" id="v_last" variabletype="">last</field><value name="VALUE"><shadow type="text"><field name="TEXT">${v}</field></shadow></value>${next ? `<next>${next}</next>` : ""}</block>`;
+}
+const WRAP = body => `<xml xmlns="http://www.w3.org/1999/xhtml"><variables><variable type="" id="v_last" islocal="false" iscloud="false">last</variable></variables>${body}</xml>`;
 function sampleLine(){
-  const off = X.b("mbot2_offset");
-  const nobody = X.b("logic_negate", {v:{BOOL: X.b("logic_operation", {f:{OP:"OR"}, v:{
-      A: X.b("logic_operation", {f:{OP:"OR"}, v:{A:X.b("mbot2_line",{f:{S:"L2"}}), B:X.b("mbot2_line",{f:{S:"L1"}})}}),
-      B: X.b("logic_operation", {f:{OP:"OR"}, v:{A:X.b("mbot2_line",{f:{S:"R1"}}), B:X.b("mbot2_line",{f:{S:"R2"}})}})}})}});
-  const turnLast = X.b("mbot2_drive_power", {v:{A:X.arith("MULTIPLY", X.varGet(), X.num(20)), B:X.arith("MULTIPLY", X.varGet(), X.num(20))}});
-  const follow = X.b("mbot2_drive_power", {v:{
-      A:X.arith("ADD", X.num(40), X.arith("MULTIPLY", off, X.num(1.2))),
-      B:X.arith("MINUS", X.num(0), X.arith("MINUS", X.num(40), X.arith("MULTIPLY", off, X.num(1.2))))},
-    n: X.b("controls_if", {m:"", v:{IF0:X.b("logic_compare",{f:{OP:"GT"}, v:{A:off, B:X.num(0)}})}, s:{DO0:setLastBlock(1).replace("__NEXT__","")},
-      n: X.b("controls_if", {v:{IF0:X.b("logic_compare",{f:{OP:"LT"}, v:{A:off, B:X.num(0)}})}, s:{DO0:setLastBlock(-1).replace("__NEXT__","")}})})});
-  const ifelse = X.b("controls_if", {m:`<mutation else="1"></mutation>`, v:{IF0:nobody}, s:{DO0:turnLast, ELSE:follow}});
-  const forever = X.b("mbot2_forever", {s:{DO:ifelse}});
-  const body = setLastBlock(1).replace("__NEXT__", `<next>${forever}</next>`);
-  return `<xml><variables><variable id="v_last">last</variable></variables>` + X.b("mbot2_start", {n:body}) + `</xml>`;
+  const off = () => X.b("mbuild_quad_color_sensor_get_off_track", {f:{INDEX:"1"}});
+  const lost = X.b("BLOCK_1618364921511", {f:{INDEX:"1", COLOR:"line", STATUS:"0"}});
+  const turnLast = X.b("mbot2_encoder_motor_drive_power", {v:{
+      LEFT_POWER: X.op("operator_multiply", X.varGet(), X.num(20)),
+      RIGHT_POWER: X.op("operator_multiply", X.varGet(), X.num(-20))}});
+  const follow = X.b("mbot2_encoder_motor_drive_power", {v:{
+      LEFT_POWER: X.op("operator_add", X.num(40), X.op("operator_multiply", off(), X.num(1.2))),
+      RIGHT_POWER: X.op("operator_subtract", X.num(40), X.op("operator_multiply", off(), X.num(1.2)))},
+    n: X.b("control_if", {v:{CONDITION: X.b("operator_gt", {v:{OPERAND1: off(), OPERAND2: `<shadow type="text"><field name="TEXT">0</field></shadow>`}})}, s:{SUBSTACK: setLastXml(1)},
+      n: X.b("control_if", {v:{CONDITION: X.b("operator_lt", {v:{OPERAND1: off(), OPERAND2: `<shadow type="text"><field name="TEXT">0</field></shadow>`}})}, s:{SUBSTACK: setLastXml(-1)}})})});
+  const body = X.b("control_if_else", {v:{CONDITION: lost}, s:{SUBSTACK: turnLast, SUBSTACK2: follow}});
+  const forever = X.b("control_forever", {s:{SUBSTACK: body}});
+  return WRAP(X.b("event_whenflagclicked", {n: setLastXml(1, forever)}));
 }
 function sampleMission(){
   let hd = 0, x = 0, y = 0; const items = [];
   const wrap = a => ((a + 540) % 360 + 360) % 360 - 180;
   ORDER.forEach(o => {
     const dx = o.p[0] - x, dy = o.p[1] - y, b = Math.atan2(dx, dy) * 180 / Math.PI, t = wrap(b - hd);
-    items.push(["mbot2_turn", {f:{DIR: t >= 0 ? "R" : "L"}, v:{DEG:X.num(Math.abs(t)), RPM:X.num(40)}}]);
-    items.push(["mbot2_straight", {f:{DIR:"F"}, v:{CM:X.num(Math.hypot(dx, dy)), RPM:X.num(60)}}]);
+    items.push(["mbot2_cw_and_ccw_with_angle", {f:{TURN: t >= 0 ? "ccw" : "cw"}, v:{ANGLE:X.num(Math.abs(t))}}]);
+    items.push(["mbot2_move_straight_with_cm_and_inch", {f:{UNIT:"cm", DIRECTION:"forward"}, v:{POWER:X.num(Math.hypot(dx, dy))}}]);
     hd = b; x = o.p[0]; y = o.p[1];
   });
-  items.push(["mbot2_stop", {}]);
-  return `<xml>` + X.b("mbot2_start", {n:X.seq(items)}) + `</xml>`;
+  items.push(["mbot2_encoder_motor_stop", {f:{EM:"ALL"}}]);
+  return WRAP(X.b("event_whenflagclicked", {n: X.seq(items)}));
 }
 function loadXml(xml){
   if(!ws) return;
   ws.clear();
-  Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(xml), ws);
+  Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), ws);
 }
 function loadSample(name){
   if(!ws) return;
-  if(name === "blank") loadXml("<xml>" + X.b("mbot2_start") + "</xml>");
-  else loadXml(name === "mission" ? sampleMission() : sampleLine());
+  loadXml(name === "blank" ? WRAP(X.b("event_whenflagclicked")) : name === "mission" ? sampleMission() : sampleLine());
   document.getElementById("startPose").value = name === "mission" ? "center" : "line";
   resetPose();
 }
 
-/* ----- 実行 ----- */
-function buildCode(){
-  const G = Blockly.JavaScript;
-  const hats = ws.getTopBlocks(true).filter(b => b.type === "mbot2_start");
-  if(!hats.length) return null;
-  G.init(ws);
-  G.INFINITE_LOOP_TRAP = "await R.tick();\n";
-  let body = "";
-  hats.forEach(h => { body += "__p.push((async () => {\n" + G.blockToCode(h) + "})());\n"; });
-  const code = G.finish("const __p = [];\n" + body + "await Promise.all(__p);\n");
-  G.INFINITE_LOOP_TRAP = null;
-  return code;
+/* ================= ブロックの実行 (インタープリター) ================= */
+const el = {
+  kid: (e, tag, name) => [...e.children].find(c => c.tagName.toLowerCase() === tag && (name === undefined || c.getAttribute("name") === name)),
+  field: (e, name) => { const f = el.kid(e, "field", name); return f ? f.textContent : ""; },
+  input: (e, name) => { const v = el.kid(e, "value", name); if(!v) return null; return [...v.children].find(c => c.tagName.toLowerCase() === "block") || [...v.children].find(c => c.tagName.toLowerCase() === "shadow") || null; },
+  stack: (e, name) => { const s = el.kid(e, "statement", name); return s ? [...s.children].find(c => c.tagName.toLowerCase() === "block") : null; },
+  next: e => { const n = el.kid(e, "next"); return n ? [...n.children].find(c => c.tagName.toLowerCase() === "block") : null; }
+};
+const vars = {};
+const toNum = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const toBool = v => typeof v === "string" ? !(v === "" || v === "0" || v.toLowerCase() === "false") : !!v;
+const isNumLike = v => v !== "" && v !== null && !isNaN(+v) && !/^\s*$/.test(String(v));
+const cmp = (a, b) => (isNumLike(a) && isNumLike(b)) ? (+a) - (+b) : String(a).toLowerCase() < String(b).toLowerCase() ? -1 : String(a).toLowerCase() > String(b).toLowerCase() ? 1 : 0;
+
+const SENS_BY_PROBE = {"1":3, "2":2, "3":1, "4":0};   // (1) R2 (2) R1 (3) L1 (4) L2
+const COLOR_MATCH = {line:"black", background:"white", white:"white", red:"red", green:"green", blue:"blue", yellow:"yellow", black:"black"};
+const sensorSees = (i, color) => { const p = sensorXY(i); const want = COLOR_MATCH[color]; return !!want && colorName(p[0], p[1]) === want; };
+const sta4 = color => (sensorSees(0, color) ? 8 : 0) + (sensorSees(1, color) ? 4 : 0) + (sensorSees(2, color) ? 2 : 0) + (sensorSees(3, color) ? 1 : 0);
+const sta2 = color => (sensorSees(1, color) ? 2 : 0) + (sensorSees(2, color) ? 1 : 0);
+const wheelRpm = em => em === "EM2" ? S.em2 : S.em1;
+
+function ev(e){
+  if(!e) return "";
+  const t = e.getAttribute("type"), I = n => ev(el.input(e, n)), F = n => el.field(e, n);
+  switch(t){
+    case "math_number": case "math_positive_number": case "math_whole_number": case "math_integer": case "math_angle": return toNum(F("NUM"));
+    case "text": return F("TEXT");
+    case "operator_add": return toNum(I("NUM1")) + toNum(I("NUM2"));
+    case "operator_subtract": return toNum(I("NUM1")) - toNum(I("NUM2"));
+    case "operator_multiply": return toNum(I("NUM1")) * toNum(I("NUM2"));
+    case "operator_divide": return toNum(I("NUM1")) / toNum(I("NUM2"));
+    case "operator_mod": { const a = toNum(I("NUM1")), b = toNum(I("NUM2")); if(!b) return NaN; let m = a % b; if(m / b < 0) m += b; return m; }
+    case "operator_round": return Math.round(toNum(I("NUM")));
+    case "operator_random": { let a = toNum(I("FROM")), b = toNum(I("TO")); if(a > b){ const c = a; a = b; b = c; } return Number.isInteger(a) && Number.isInteger(b) ? a + Math.floor(Math.random() * (b - a + 1)) : a + Math.random() * (b - a); }
+    case "operator_gt": return cmp(I("OPERAND1"), I("OPERAND2")) > 0;
+    case "operator_lt": return cmp(I("OPERAND1"), I("OPERAND2")) < 0;
+    case "operator_equals": return cmp(I("OPERAND1"), I("OPERAND2")) === 0;
+    case "operator_and": return toBool(I("OPERAND1")) && toBool(I("OPERAND2"));
+    case "operator_or": return toBool(I("OPERAND1")) || toBool(I("OPERAND2"));
+    case "operator_not": return !toBool(I("OPERAND"));
+    case "operator_join": return String(I("STRING1")) + String(I("STRING2"));
+    case "operator_letter_of": return String(I("STRING")).charAt(toNum(I("LETTER")) - 1);
+    case "operator_length": return String(I("STRING")).length;
+    case "operator_contains": return String(I("STRING1")).toLowerCase().includes(String(I("STRING2")).toLowerCase());
+    case "operator_mathop": { const n = toNum(I("NUM")); switch(F("OPERATOR")){
+      case "abs": return Math.abs(n); case "floor": return Math.floor(n); case "ceiling": return Math.ceil(n); case "sqrt": return Math.sqrt(n);
+      case "sin": return Math.sin(rad(n)); case "cos": return Math.cos(rad(n)); case "tan": return Math.tan(rad(n));
+      case "asin": return Math.asin(n) * 180 / Math.PI; case "acos": return Math.acos(n) * 180 / Math.PI; case "atan": return Math.atan(n) * 180 / Math.PI;
+      case "ln": return Math.log(n); case "log": return Math.log10(n); case "e ^": return Math.exp(n); case "10 ^": return Math.pow(10, n); } return 0; }
+    case "data_variable": return vars[F("VARIABLE")] !== undefined ? vars[F("VARIABLE")] : 0;
+    /* mBot2 */
+    case "mbot2_encoder_motor_get_speed": { const r = wheelRpm(F("EM")); return F("MODE") === "power" ? r / POWER_TO_RPM : r; }
+    case "mbot2_encoder_motor_get_angle": return Math.round((F("EM") === "EM2" ? S.angR : S.angL) - (angBase[F("EM")] || 0));
+    /* クアッドRGBセンサー */
+    case "mbuild_quad_color_sensor_get_off_track": return Math.round(lineOffset());
+    case "mbuild_quad_color_sensor_get_sta_with_inputMenu": return sta2(F("COLOR")) === +F("STATUS");
+    case "BLOCK_1618397596925": return sta2(F("COLOR"));
+    case "BLOCK_1618364921511": return sta4(F("COLOR")) === +F("STATUS");
+    case "BLOCK_1618397679204": return sta4(F("COLOR"));
+    case "mbuild_quad_color_sensor_is_line_and_background": { const pr = F("PROBE"); const i = pr === "random" ? Math.floor(Math.random() * 4) : SENS_BY_PROBE[pr]; return sensorSees(i, F("COLOR")); }
+    case "mbuild_quad_color_sensor_get_rgb_gray_light": { const p = sensorXY(SENS_BY_PROBE[F("PROBE")]), c = rgbAt(p[0], p[1]) || [0,0,0];
+      switch(F("KIND")){ case "r": return c[0]; case "g": return c[1]; case "b": return c[2]; case "gray": return Math.round((c[0] + c[1] + c[2]) / 3); case "light": return 50; default: return colorName(p[0], p[1]) || "none"; } }
+    default: return 0;
+  }
 }
-async function runProgram(){
+const angBase = {EM1:0, EM2:0};
+
+async function tick(c){ await R.tick(); if(c.ep !== epoch) throw STOP; }
+async function runStack(e, c){
+  while(e){ const r = await runBlock(e, c); if(r) return r; e = el.next(e); }
+  return null;
+}
+async function loopBody(sub, c){                // "break" / "continue" / "stop" を返す
+  const r = await runStack(sub, c);
+  if(r === "break") return "break";
+  if(r === "stop") return "stop";
+  return null;
+}
+async function runBlock(e, c){
+  const t = e.getAttribute("type"), I = n => ev(el.input(e, n)), F = n => el.field(e, n), S1 = n => el.stack(e, n);
+  switch(t){
+    case "control_wait": await R.wait(toNum(I("DURATION"))); if(c.ep !== epoch) throw STOP; return null;
+    case "control_repeat": { const n = Math.floor(toNum(I("TIMES"))); for(let i = 0; i < n; i++){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null; }
+    case "control_forever": while(true){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
+    case "control_repeat_until": while(!toBool(I("CONDITION"))){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
+    case "control_if_repeat_new": while(toBool(I("CONDITION"))){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
+    case "control_wait_until": while(!toBool(I("CONDITION"))) await tick(c); return null;
+    case "control_if": return toBool(I("CONDITION")) ? await runStack(S1("SUBSTACK"), c) : null;
+    case "control_if_else": return toBool(I("CONDITION")) ? await runStack(S1("SUBSTACK"), c) : await runStack(S1("SUBSTACK2"), c);
+    case "control_break_new": return "break";
+    case "control_continue_new": return "continue";
+    case "control_stop": if(F("STOP_OPTION") === "all"){ stopAll(); throw STOP; } return F("STOP_OPTION") === "this script" ? "stop" : null;
+    case "data_setvariableto": vars[F("VARIABLE")] = I("VALUE"); return null;
+    case "data_changevariableby": vars[F("VARIABLE")] = toNum(vars[F("VARIABLE")]) + toNum(I("VALUE")); return null;
+    case "data_showvariable": case "data_hidevariable": return null;
+    /* mBot2 シャーシ */
+    case "mbot2_move_direction_with_time": case "mbot2_move_direction_with_rpm": {
+      const p = toNum(I("POWER")), d = F("DIRECTION");
+      R.rpm(d === "forward" || d === "turn_right" ? p : -p, d === "forward" || d === "turn_left" ? p : -p);
+      if(t === "mbot2_move_direction_with_time"){ await R.wait(toNum(I("TIME"))); if(c.ep !== epoch) throw STOP; R.stopMotors(); }
+      return null; }
+    case "mbot2_move_straight_with_cm_and_inch": {
+      const cm = toNum(I("POWER")) * (F("UNIT") === "inch" ? 2.54 : 1);
+      await R.straight(F("DIRECTION") === "backward" ? -cm : cm, 50, c); return null; }
+    case "mbot2_cw_and_ccw_with_angle": {                 // 左折する(cw) は turn(-角度)、右折する(ccw) は turn(+角度)
+      const a = toNum(I("ANGLE")); await R.turn(F("TURN") === "cw" ? -a : a, 50, c); return null; }
+    case "mbot2_encoder_motor_set_with_time": case "mbot2_encoder_motor_set": {
+      const em = F("EM"), rpm = toNum(I("LEFT_POWER")) * (F("MODE") === "power" ? POWER_TO_RPM : 1);
+      R.rpm(em !== "EM2" ? rpm : null, em !== "EM1" ? rpm : null);
+      if(t === "mbot2_encoder_motor_set_with_time"){ await R.wait(toNum(I("TIME"))); if(c.ep !== epoch) throw STOP; R.stopMotors(em === "ALL" ? undefined : em); }
+      return null; }
+    case "mbot2_encoder_motor_set_with_time_angle_and_circle": {
+      const em = F("EM"), a = toNum(I("LEFT_POWER")), sp = 50 * (a < 0 ? -1 : 1);
+      R.rpm(em !== "EM2" ? sp : null, em !== "EM1" ? sp : null);
+      await R.wait(Math.abs(a) / (50 * 6)); if(c.ep !== epoch) throw STOP; R.stopMotors(em === "ALL" ? undefined : em); return null; }
+    case "mbot2_encoder_motor_drive_speed2": R.rpm(toNum(I("LEFT_POWER")), toNum(I("RIGHT_POWER"))); return null;
+    case "mbot2_encoder_motor_drive_power": R.rpm(toNum(I("LEFT_POWER")) * POWER_TO_RPM, toNum(I("RIGHT_POWER")) * POWER_TO_RPM); return null;
+    case "mbot2_encoder_motor_stop": R.stopMotors(F("EM") === "ALL" ? undefined : F("EM")); return null;
+    case "mbot2_encoder_motor_reset_angle": if(F("EM") === "EM2") angBase.EM2 = S.angR; else angBase.EM1 = S.angL; return null;
+    default: return null;   // 光・オートロック・キャリブレーションなど、動きに関係しないブロックは何もしない
+  }
+}
+
+/* ----- スレッド管理 ----- */
+function hatsOf(types, test){
+  if(!ws) return [];
+  const dom = Blockly.Xml.workspaceToDom(ws);
+  return [...dom.children].filter(b => b.tagName.toLowerCase() === "block" && types.includes(b.getAttribute("type")) && (!test || test(b)));
+}
+const alive = new Set();
+function startThread(hat){
+  const id = hat.getAttribute("id") || Math.random();
+  if(alive.has(id)) return;
+  alive.add(id); threadCount++; setStatus();
+  const c = {ep: epoch};
+  runStack(el.next(hat), c).catch(e => { if(e !== STOP) toast("実行中にエラー: " + (e && e.message || e)); }).then(() => {
+    alive.delete(id); threadCount = Math.max(0, threadCount - 1);
+    if(c.ep === epoch && threadCount === 0){ R.stopMotors(); }
+    setStatus();
+  });
+}
+function stopAll(){ epoch++; waiters.forEach(f => f()); waiters = []; R.stopMotors(); }
+function runProgram(){
   if(!ws){ toast("ブロックエディターを読み込めませんでした (インターネット接続を確認してください)"); return; }
-  stopProgram();
-  let code;
-  try{ code = buildCode(); } catch(e){ toast("ブロックを読み取れませんでした: " + e.message); return; }
-  if(!code){ toast("「プログラムを開始したとき」のブロックが必要です"); return; }
-  resetPose();
-  const id = ++runId;
-  S.manual = false; waiters = []; stopFlag = false; running = true; R.resetTimer(); setStatus();
-  try{ await (new Function("R", "return (async () => {\n" + code + "\n})();"))(R); }
-  catch(e){ if(e !== STOP) toast("実行中にエラー: " + (e && e.message || e)); }
-  if(id !== runId) return;                 // 新しい実行が始まっていたら何もしない
-  R.stop(); running = false; setStatus();
+  stopAll(); alive.clear(); threadCount = 0;
+  const hats = hatsOf(["event_whenflagclicked", "cyberpi_when_launch"]);
+  if(!hats.length){ toast("「旗が押されたとき」か「CyberPiが起動したとき」のブロックが必要です"); return; }
+  for(const k in vars) delete vars[k];
+  resetPose(); S.manual = false; t0 = S.simT;
+  hats.forEach(startThread);
 }
-function stopProgram(){
-  if(!running) return;
-  runId++; stopFlag = true; const w = waiters; waiters = []; w.forEach(x => x.rej(STOP));
-  R.stop(); running = false; setStatus();
-}
+const KEYNAME = {" ":"space", ArrowUp:"up arrow", ArrowDown:"down arrow", ArrowLeft:"left arrow", ArrowRight:"right arrow"};
+function fireKey(k){ hatsOf(["event_whenkeypressed"], b => { const o = el.field(b, "KEY_OPTION"); return o === k || o === "any"; }).forEach(startThread); }
+function fireButton(b){ hatsOf(["cyberpi_when_button_press"], h => el.field(h, "BUTTON") === b).forEach(startThread); }
 
 /* ================= 画面 ================= */
 function resetPose(){
   const center = document.getElementById("startPose").value === "center";
   Object.assign(S, center ? {x:0, y:0, d:0} : {x:startLineX, y:-12, d:0});
-  S.odo = 0; S.em1 = 0; S.em2 = 0;
+  S.odo = 0; S.em1 = 0; S.em2 = 0; angBase.EM1 = S.angL; angBase.EM2 = S.angR;
   MS.step = 0; MS.done = false; MS.t = 0; renderMission(); trailClear(); readSensors();
 }
 function syncModel(){
@@ -572,30 +761,31 @@ function syncModel(){
     ui.sens[i].classList.toggle("on", !!S.sens[i]);
   }
   ui.kOff.textContent = S.sens.some(Boolean) ? lineOffset().toFixed(0) : "- (線なし)";
-  ui.kWheel.textContent = Math.round(S.vL / RPM_TO_CMS) + " / " + Math.round(S.vR / RPM_TO_CMS) + " rpm";
+  ui.kWheel.textContent = Math.round(S.em1) + " / " + Math.round(S.em2) + " rpm";
   ui.kOdo.textContent = S.odo.toFixed(0) + " cm";
   ui.hudInfo.textContent = MS.done ? "クリア " + MS.t.toFixed(1) + " 秒" : (MS.step ? "つぎは「" + ORDER[MS.step].n + "」  " : "") + MS.t.toFixed(1) + " 秒";
 }
-const bRun = document.getElementById("bRun"), bManual = document.getElementById("bManual");
+const bManual = document.getElementById("bManual");
 function setStatus(){
-  ui.hudStatus.textContent = running ? "プログラム実行中" : S.manual ? "手動操作中" : "停止中";
-  bManual.classList.toggle("active", S.manual && !running);
-  document.getElementById("pad").classList.toggle("show", S.manual && !running);
+  ui.hudStatus.textContent = isRunning() ? "プログラム実行中" : S.manual ? "手動操作中" : "停止中";
+  bManual.classList.toggle("active", S.manual && !isRunning());
+  document.getElementById("pad").classList.toggle("show", S.manual && !isRunning());
 }
-bRun.onclick = runProgram;
-document.getElementById("bStop").onclick = () => { stopProgram(); R.stop(); };
-bManual.onclick = () => { if(running) stopProgram(); S.manual = !S.manual; setStatus(); };
-document.getElementById("bReset").onclick = () => { stopProgram(); R.stop(); resetPose(); };
-document.getElementById("startPose").onchange = () => { stopProgram(); resetPose(); };
-document.getElementById("bLoad").onclick = () => { stopProgram(); loadSample(document.getElementById("sample").value); };
+document.getElementById("bRun").onclick = runProgram;
+document.getElementById("bStop").onclick = () => { stopAll(); alive.clear(); threadCount = 0; setStatus(); };
+bManual.onclick = () => { if(isRunning()){ stopAll(); alive.clear(); threadCount = 0; } S.manual = !S.manual; setStatus(); };
+document.getElementById("bReset").onclick = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); };
+document.getElementById("startPose").onchange = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); };
+document.getElementById("bLoad").onclick = () => { stopAll(); alive.clear(); threadCount = 0; loadSample(document.getElementById("sample").value); setStatus(); };
+document.querySelectorAll("#btns button").forEach(b => b.addEventListener("click", () => fireButton(b.dataset.b)));
 
 const chipsEl = document.getElementById("chips"), mInfo = document.getElementById("mInfo");
 ORDER.forEach(o => { const d = document.createElement("div"); d.className = "chip"; d.textContent = o.n; chipsEl.appendChild(d); });
 function renderMission(){
-  [...chipsEl.children].forEach((el, i) => {
+  [...chipsEl.children].forEach((el2, i) => {
     const done = i < MS.step, next = !MS.done && i === MS.step;
-    el.classList.toggle("done", done); el.classList.toggle("next", next);
-    el.style.borderColor = done || next ? ORDER[i].c : ""; el.style.background = done ? ORDER[i].c : "";
+    el2.classList.toggle("done", done); el2.classList.toggle("next", next);
+    el2.style.borderColor = done || next ? ORDER[i].c : ""; el2.style.background = done ? ORDER[i].c : "";
   });
   mInfo.classList.toggle("clear", MS.done);
   mInfo.textContent = MS.done ? "クリア! タイム " + MS.t.toFixed(1) + " 秒" : (MS.step ? "つぎは「" + ORDER[MS.step].n + "」" : "緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます");
@@ -614,6 +804,7 @@ Object.keys(views).forEach(k => views[k].onclick = () => setView(k));
 window.addEventListener("keydown", e => {
   if(/INPUT|SELECT|TEXTAREA/.test((e.target.tagName||"")) || (e.target.closest && e.target.closest("#blocks"))) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if(!keys[k]) fireKey(KEYNAME[e.key] || k);
   keys[k] = true;
   if(S.manual && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(k)) e.preventDefault();
 });
@@ -630,10 +821,9 @@ function resize(){
 }
 new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
 
-/* ブロックを自動保存 */
-function saveWs(){ try{ localStorage.setItem("mbot2sim.ws", Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
+function saveWs(){ try{ localStorage.setItem("mbot2sim.ws.v2", Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
 if(ws){
-  let saved = null; try{ saved = localStorage.getItem("mbot2sim.ws"); }catch(e){}
+  let saved = null; try{ saved = localStorage.getItem("mbot2sim.ws.v2"); }catch(e){}
   let loaded = false;
   if(saved){ try{ loadXml(saved); loaded = ws.getTopBlocks().length > 0; }catch(e){ loaded = false; } }
   if(!loaded) loadSample("line");
