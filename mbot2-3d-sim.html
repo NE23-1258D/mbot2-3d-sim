@@ -49,6 +49,15 @@
   .kv span{color:var(--muted)}
   .help{font-size:12px;color:var(--muted);line-height:1.7;margin:0}
   kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  input[type=text]{flex:1;min-width:0;font:inherit;font-size:14px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:46px}
+  input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .plist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .plist li{display:flex;align-items:center;gap:6px;font-size:13px}
+  .plist .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .plist small{color:var(--muted);display:block;font-size:11px}
+  .plist button{flex:none;min-height:34px;padding:4px 10px;font-size:12px}
+  #srvState{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+  #srvState.ok{color:var(--on)}
   #hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
   #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 11px;font-size:14px;font-variant-numeric:tabular-nums}
   #pad{position:absolute;right:14px;bottom:14px;display:none;gap:8px;align-items:flex-end}
@@ -103,6 +112,16 @@
       </select>
       <button id="bLoad" type="button" style="flex:none;width:92px">読み込む</button>
     </div>
+  </section>
+
+  <section class="card" id="srvCard" aria-label="学校のサーバー">
+    <h2>学校のサーバーに保存</h2>
+    <div class="row">
+      <input id="srvName" type="text" maxlength="60" placeholder="プログラムの名前" value="プログラム1" aria-label="プログラムの名前">
+      <button id="bSrvSave" type="button" style="flex:none;width:96px">保存</button>
+    </div>
+    <p id="srvState">確認中…</p>
+    <ul class="plist" id="srvList"></ul>
   </section>
 
   <section class="card" aria-label="mBlock へ">
@@ -863,6 +882,70 @@ function exportMblock(){
   }catch(e){ toast("書き出しに失敗しました: " + e.message); }
 }
 
+/* ================= 学校のサーバーに保存 =================
+   server.py と同じアドレスから開いたときだけ使えます (GitHub Pages など、サーバーのない場所では使えません)。 */
+const srv = {ok:false, rows:[]};
+const srvEls = {state: document.getElementById("srvState"), name: document.getElementById("srvName"), list: document.getElementById("srvList"), save: document.getElementById("bSrvSave")};
+async function srvFetch(path, opt){
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error || ("エラー " + r.status));
+  return j;
+}
+const fmtTime = sec => new Date(sec * 1000).toLocaleString("ja-JP", {month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit"});
+async function srvRefresh(){
+  srvEls.list.textContent = "";
+  try{
+    srv.rows = await srvFetch("/api/programs");
+    srv.ok = true;
+    srvEls.state.className = "ok"; srvEls.state.textContent = "サーバーにつながっています (" + srv.rows.length + " 件)";
+    srv.rows.forEach(r => {
+      const li = document.createElement("li"), nm = document.createElement("span"), small = document.createElement("small");
+      nm.className = "nm"; nm.textContent = r.name; small.textContent = fmtTime(r.updated_at); nm.appendChild(small);
+      const bl = document.createElement("button"), bd = document.createElement("button");
+      bl.type = bd.type = "button"; bl.textContent = "読み込む"; bd.textContent = "削除";
+      bl.onclick = () => srvLoad(r.id); bd.onclick = () => srvDelete(r);
+      li.append(nm, bl, bd); srvEls.list.appendChild(li);
+    });
+  }catch(e){
+    srv.ok = false; srv.rows = [];
+    srvEls.state.className = ""; srvEls.state.textContent = "サーバーにつながっていません。server.py を起動して、そのアドレス (例: http://127.0.0.1:8080/) から開いてください。";
+  }
+  srvEls.save.disabled = !srv.ok;
+}
+async function srvSave(){
+  if(!ws || !srv.ok) return;
+  const name = srvEls.name.value.trim();
+  if(!name){ toast("プログラムの名前を入力してください"); return; }
+  if(srv.rows.some(r => r.name === name) && !confirm("「" + name + "」はすでに保存されています。上書きしますか?")) return;
+  try{
+    const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws));
+    const res = await srvFetch("/api/programs", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({name, xml, startPose: document.getElementById("startPose").value})});
+    toast(res.updated ? "「" + name + "」を上書き保存しました" : "「" + name + "」を保存しました");
+    srvRefresh();
+  }catch(e){ toast("保存できませんでした: " + e.message); }
+}
+async function srvLoad(id){
+  if(!ws) return;
+  try{
+    const row = await srvFetch("/api/programs/" + id);
+    stopAll(); alive.clear(); threadCount = 0;
+    loadXml(row.xml);
+    document.getElementById("startPose").value = row.start_pose === "center" ? "center" : "line";
+    srvEls.name.value = row.name;
+    resetPose(); setStatus();
+    toast("「" + row.name + "」を読み込みました");
+  }catch(e){ toast("読み込めませんでした: " + e.message); }
+}
+async function srvDelete(r){
+  if(!confirm("「" + r.name + "」をサーバーから削除しますか?")) return;
+  try{ await srvFetch("/api/programs/" + r.id, {method:"DELETE"}); toast("「" + r.name + "」を削除しました"); srvRefresh(); }
+  catch(e){ toast("削除できませんでした: " + e.message); }
+}
+srvEls.save.onclick = srvSave;
+srvEls.save.disabled = true;
+
 /* ----- スレッド管理 ----- */
 function hatsOf(types, test){
   if(!ws) return [];
@@ -1011,6 +1094,7 @@ async function frame(now){
   requestAnimationFrame(frame);
 }
 resetPose(); setStatus(); setView("orbit");
+srvRefresh();
 requestAnimationFrame(frame);
 })();
 </script>
