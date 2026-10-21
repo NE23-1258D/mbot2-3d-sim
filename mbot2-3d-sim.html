@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#0e131c; --panel:#161d2b; --card:#1d2638; --line:#2c3852; --text:#e8edf7; --muted:#98a5c0;
-    --accent:#3aa6ff; --on:#39e07a; --off:#3b4558;
+    --accent:#3aa6ff; --on:#39e07a; --off:#3b4558; --warn:#ff8a5e;
   }
   @media (prefers-color-scheme: light){
     :root:not([data-theme="dark"]){ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
@@ -15,75 +15,95 @@
   :root[data-theme="light"]{ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;overflow:hidden}
-  body{display:grid;grid-template-columns:380px minmax(0,1fr);grid-template-rows:100%}
-  #panel{background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:18px 18px 28px;display:flex;flex-direction:column;gap:14px}
-  #stage{position:relative;min-width:0;min-height:0}
+  body{display:grid;grid-template-columns:340px minmax(0,1fr);grid-template-rows:56% 44%;grid-template-areas:"panel stage" "panel blocks"}
+  #panel{grid-area:panel;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:12px}
+  #stage{grid-area:stage;position:relative;min-width:0;min-height:0}
+  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-top:1px solid var(--line);background:#fff}
+  #blockly{position:absolute;inset:0}
   canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
-  h1{font-size:18px;margin:0}
-  .sub{font-size:12px;color:var(--muted);margin:2px 0 0}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-  .card h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  h1{font-size:17px;margin:0}
+  .sub{font-size:12px;color:var(--muted);margin:2px 0 0;line-height:1.5}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .card h2{font-size:12px;margin:0 0 9px;color:var(--muted);font-weight:600;letter-spacing:.04em}
   .row{display:flex;gap:8px}
   .row + .row{margin-top:8px}
-  button{flex:1;font:inherit;font-size:14px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 8px;cursor:pointer;min-height:48px}
+  button,select{font:inherit;font-size:14px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:10px;padding:9px 8px;min-height:46px}
+  button{flex:1;cursor:pointer}
+  select{flex:1;min-width:0;background:var(--card)}
   button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
-  button.active{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
-  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin:12px 0 6px}
-  label:first-of-type{margin-top:0}
-  label b{color:var(--text);font-variant-numeric:tabular-nums}
-  input[type=range]{width:100%;height:28px;accent-color:var(--accent)}
-  .chips{display:flex;gap:8px;margin-bottom:10px}
-  .chip{flex:1;text-align:center;font-size:15px;padding:10px 0;border-radius:10px;border:2px solid var(--line);color:var(--muted)}
+  button.primary,button.active{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:700}
+  button.stop{border-color:var(--warn);color:var(--warn)}
+  button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .chips{display:flex;gap:8px;margin-bottom:8px}
+  .chip{flex:1;text-align:center;font-size:15px;padding:9px 0;border-radius:10px;border:2px solid var(--line);color:var(--muted)}
   .chip.next{color:var(--text);font-weight:700}
   .chip.done{color:#04121f;font-weight:700}
   .chip.done::after{content:" ✓"}
-  #mInfo{font-size:13px;color:var(--muted);margin:10px 0 0;min-height:1.4em}
+  #mInfo{font-size:13px;color:var(--muted);margin:0;min-height:1.4em}
   #mInfo.clear{color:var(--on);font-weight:700}
   .sens{display:flex;gap:8px}
   .sens div{flex:1;text-align:center;font-size:12px;color:var(--muted)}
-  .sens i{display:block;height:26px;border-radius:7px;background:var(--off);margin-bottom:4px}
+  .sens i{display:block;height:24px;border-radius:7px;background:var(--off);margin-bottom:4px}
   .sens i.on{background:var(--on)}
+  .kv{display:flex;justify-content:space-between;font-size:13px;margin-top:10px;font-variant-numeric:tabular-nums}
+  .kv span{color:var(--muted)}
   .help{font-size:12px;color:var(--muted);line-height:1.7;margin:0}
   kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
-  #hud{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
-  #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;font-size:14px;font-variant-numeric:tabular-nums}
-  #pad{position:absolute;right:16px;bottom:16px;display:none;gap:8px;align-items:flex-end}
+  #hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+  #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 11px;font-size:14px;font-variant-numeric:tabular-nums}
+  #pad{position:absolute;right:14px;bottom:14px;display:none;gap:8px;align-items:flex-end}
   #pad.show{display:flex}
-  #pad button{flex:none;width:68px;min-height:68px;font-size:26px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
+  #pad button{flex:none;width:60px;min-height:60px;font-size:24px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
   #pad button:active{background:var(--accent);color:#04121f}
+  #msg{position:absolute;top:10px;right:14px;z-index:30;max-width:70%;background:#1d2638;color:#e8edf7;border:1px solid #ff8a5e;border-radius:10px;padding:8px 12px;font-size:13px;display:none}
+  #msg.show{display:block}
   @media (max-width:900px){
-    body{grid-template-columns:100%;grid-template-rows:56% 44%}
-    #stage{order:1}
-    #panel{order:2;border-right:0;border-top:1px solid var(--line);padding:14px 14px 24px}
-    #pad button{width:60px;min-height:60px}
+    body{grid-template-columns:100%;grid-template-rows:34% 38% 28%;grid-template-areas:"stage" "blocks" "panel"}
+    #panel{border-right:0;border-top:1px solid var(--line)}
   }
 </style>
 </head>
 <body>
+
 <aside id="panel" aria-label="操作パネル">
   <div>
     <h1>mBot2 3Dシミュレーター</h1>
-    <p class="sub">黒い線をたどる / 色マスを順に踏む</p>
+    <p class="sub">ブロックを組み立てて、実機での動きを確認します。コースは 2m × 2m です。</p>
   </div>
 
-  <section class="card" aria-label="走行">
-    <h2>走行</h2>
+  <section class="card" aria-label="実行">
+    <h2>実行</h2>
     <div class="row">
-      <button id="bAuto" type="button" class="primary">▶ 線をたどる</button>
-      <button id="bManual" type="button">手動</button>
+      <button id="bRun" type="button" class="primary">▶ 実行</button>
+      <button id="bStop" type="button" class="stop">■ 停止</button>
     </div>
-    <div class="row"><button id="bReset" type="button">リセット</button></div>
+    <div class="row">
+      <button id="bManual" type="button">手動操作</button>
+      <button id="bReset" type="button">位置を戻す</button>
+    </div>
+    <div class="row">
+      <select id="startPose" aria-label="スタート位置">
+        <option value="line">スタート位置: 線の上</option>
+        <option value="center">スタート位置: 中央</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="card" aria-label="サンプル">
+    <h2>サンプルのブロック</h2>
+    <div class="row">
+      <select id="sample" aria-label="サンプルを選ぶ">
+        <option value="line">線をたどる</option>
+        <option value="mission">色マスを順に踏む</option>
+        <option value="blank">空にする</option>
+      </select>
+      <button id="bLoad" type="button" style="flex:none;width:92px">読み込む</button>
+    </div>
   </section>
 
   <section class="card" aria-label="課題">
     <h2>課題: 色マスを順に踏もう</h2>
     <div class="chips" id="chips" aria-label="踏む順番"></div>
-    <div class="row">
-      <button id="mManual" type="button">手動で挑戦</button>
-      <button id="mAuto" type="button">自動で解く</button>
-    </div>
     <p id="mInfo">緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます</p>
   </section>
 
@@ -96,30 +116,26 @@
     </div>
   </section>
 
-  <section class="card" aria-label="調整">
-    <h2>調整</h2>
-    <label for="speed">速さ <b id="speedV">2.0</b></label>
-    <input id="speed" type="range" min="0.5" max="3" step="0.1" value="2">
-    <label for="gain">曲がる強さ <b id="gainV">3.0</b></label>
-    <input id="gain" type="range" min="1" max="8" step="0.5" value="3">
-  </section>
-
-  <section class="card" aria-label="センサー">
+  <section class="card" aria-label="センサーとモーター">
     <h2>クアッドRGBセンサー (黒=点灯)</h2>
     <div class="sens">
       <div><i id="sL2"></i>L2</div><div><i id="sL1"></i>L1</div><div><i id="sR1"></i>R1</div><div><i id="sR2"></i>R2</div>
     </div>
+    <div class="kv"><span>ライン偏差</span><b id="kOff">-</b></div>
+    <div class="kv"><span>左 / 右の車輪</span><b id="kWheel">0 / 0 rpm</b></div>
+    <div class="kv"><span>走った距離</span><b id="kOdo">0 cm</b></div>
   </section>
 
   <p class="help">
-    手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回(画面右下のボタンでも操作できます)<br>
+    ブロックは mBlock の mBot2 用ブロックに近づけていますが、名前や数値が実機と完全に同じとは限りません。実機では、モーターの動力・速度・床の材質・電池の残りで動きが変わります。<br>
+    手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回<br>
     視点: ドラッグで回転、ホイールで拡大縮小
   </p>
 </aside>
 
 <main id="stage">
   <canvas id="c" aria-label="mBot2 の3Dシミュレーション"></canvas>
-  <div id="hud"><span id="hudStatus">停止中</span><span id="hudInfo">周回 0.00</span></div>
+  <div id="hud"><span id="hudStatus">停止中</span><span id="hudInfo">0.0 秒</span></div>
   <div id="pad" aria-label="手動操作ボタン">
     <button type="button" data-k="ArrowLeft" aria-label="左に旋回">◀</button>
     <button type="button" data-k="ArrowUp" aria-label="前進">▲</button>
@@ -127,33 +143,49 @@
   </div>
 </main>
 
+<section id="blocks" aria-label="ブロックエディター">
+  <div id="msg" role="status"></div>
+  <div id="blockly"></div>
+</section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/blockly_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/blocks_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/javascript_compressed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/blockly@10.4.3/msg/ja.js"></script>
 <script>
 (function(){
 "use strict";
 const FIELD_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAlEAAAG9CAYAAAA1EiO6AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAAEpdJREFUeAHt3F2M3XWdx/HvPLRT+ghboC6tPHR3gskCid6QrTUmeqE3Uhez2TVerSIJV1wZEr0gbohwI5o1ETcRE42JJkZqQBLj7t4ImnBnspJYkkWWtgkYmtoHyvRh5uz5TRm2wnn4z8dhWo+vV3Nges5v/uf85kzP733+///M1Pz8fK8AAFiV2ZUPZmZmCgCA0ZaWlqrX612MqBZQhw4dKgAARrvmmmtq165d/78nqmlVBQDAcFNTU8vNNF0AAKzawIhqhcX6u/Tr7jkAuvBS8ZfA2nC5Dfu6zw66su2i2rBhQ83Pz9fi4mLx7mrnpB07dqxeffXVt65rz8HMruma2tn/i6dgIi1Vr7b1/9xQe/ofe5JZnen+W+BTp6bq6NFiorV9Hb/tXy6ebmN9Xl+D1udLzQ77xPYEPf/888X6ePLJJ+vAgQN/dN3iw7365L/8Xf1PvVZMnmN1ov6p/rkerX8vSDz7bNWHPlRMtKX+ZUv/svDWNdbn9TVofV4xNKIU7vo6derUO66bOl31Uh2v/65Xisn0Sp0sSJ0+3f7b9lA4xDO5LtTKXqgV1uf1NWh9XuHEcgCAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAiIKACAgIgCAAgMjajZ2dmB1y8tLdUo425/t7a11ttbz20BwFpa7brT6/Wi25L7vpydkMxzx44dQz9ndtgNR48erQceeKDeeOON5b+3/3/gAx+o++67r0aZnp6ub37zm/XrX/+6Nm3aNHRc295jjz22PH7Utp577rn61re+Vdu2bRs67tSpU8uP9X3ve1+N0r5An//85+uqq64aOub111+vj3zkI/WZz3xm5La6zLPd39TUVH3ta18rAFgvbY362c9+Vj/84Q9r+/btQ8e1Ne/hhx+u66+/fuiYto698sor9cUvfrG2bt06dNyJEyfq05/+dH384x+vcY/toYceWu6MDRs2DBxz/vz52rNnT33pS18au62u8/z6178+siVW5tnuc8uWLcvXtfX9N7/5zdDPqfn5+V4/Pnr9T24Jtny59ONLL/v27et18cEPfnDg57/9srCwMHZb3/72tztt6+DBg2O31e5vZmZm7LY+8YlP9LroMs9+sPX63wxjt/X973//nZ//b1O9v+1d0yt/JvbPP/b+oQepn/+8vXVe7LW3bC6TejnbX5PnepeuDbfeemun748vfOELvS7r5/PPPz92W21Ml221++yiH0hjt3XjjTd22lbXeR4+fHjstobNsx9rf/T3nTt3LrfTwD1RvSG7tK6++urqYlQNrpibm6suRu3NWu24VpntMOXi4uLIcV0ef9dxXec5yK66vq6r3bWx3lNMol7Nnt5aL778u7owe75gNWZnF+v48R11881/3X+d6RWTqb3v/+1vL+bUaq3sTRln2Ok7f/w4ZqqLrvfZZdyoo0ar3VbbY9VlDsPGDDtsOP4rx2Xzr72H6t66p5bKOVWTaLr/5z/+6z/rbz65tyDx0Y9+qH73u18Uk6ut3a0RFhaKK9DAiGp7bAbtjWrHO7s4efLk2DFnz56tLhY6fud02V6bUzvOOk47x6qLLvNcOacssVBnlv8/7YcoJ9bi3IWC1NzctmKyXbgwFe2Fatp5QN3uY/zr0LgjOKu9zy7jzpw5U1102Vbbk9RlDsPGtD1Zg/ZGDT2cd9NNN9VTTz311iTahvvHAKuLxx9/vI4dOzZy11nb3saNG2ucAwcOVP/479CTz5oWRrfddluN07bxzDPPjH1cu3btqi66zLMFadfdoACwVu6///666667Rq6fLaBuueWWGmfv3r3L6+e4tbjLtpqnn356uS/aGjlI65Cuh/O6zrPL2v72eW7evLkOHjxYDz744MDxQw/ntU+8/fbb33F9782fOBum3d6ip4teh7y+9tpra//+/dXFuMfW7Nu3r7poxTnqJwfXep7QDNsLDM2wd8Pwdu37ZPfu3cuXtdDOO+66Fo9bP9vtd9xxR3Uxbl1fj3m+8MILQ8fPjnpgg4yLlHG3p2PXYnujntTVjr2c82RytReM+fn5+vCHP9z5UDaTr72GtFMDfvzjHxd0sZr1br3vezWPbS3X9dSo12InlsMV5u67765HHnmk4FLHjx+vJ554wp5KuII4YxmuMH/KDyMwueyZhCuPiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACIgoAICAiAIACMwWcEWZm5urpaWlOn/+fEEzMzNTU1NTBVxZRBRcQaanp+urX/1qfeMb36her1dwKSEFV5ahETU7O/im9g65vdAPM+72d2tbV/JjW+08+MvVvleahYWFAkitdt1pb9qGRfqo25L7vpydMMqwee7YsWPo5wyNqKNHj9bnPve5Onv27PLfz5w5U3feeWc98MADNcrKO+lf/vKXtXnz5qHjXn/99frRj340cvLttl/96lf1yCOP1Pbt24eOO3nyZH35y1+u97///TVK+2J/6lOfqi1btgwdc/r06frYxz5W991338htdZlne0La5Xvf+56IAmDdtDXniSeeqO985zt19dVXDx136tSpeuyxx+qGG24YOqaFxauvvlr33ntvbdu2bei4P/zhD/XZz3627r777hr32FpLvPjii8unLwxy7ty52rNnTz366KNjt9V1nt/97ndHjhk0z/b4Dh06NPRzZodtqH0x2oO61GuvvTY2opqf/OQn9eyzz44c0+5jcXFx6B6vFe3BP/XUUzXOPffcMzai2v399Kc/rQsXLtQ44yKq6TLPUSE51saNxWS7MDNTkDp7dvxrGX/u8kO4zz33XD399NNjx7UdFaMiqjl27Fg9+eSTNc5tt902NqKaH/zgB3X48OGRY2666aaxEdV0nWfbeTMqopph82yxtnKk4FIDC2bYuRijCnS14zZ2DIS1HNfCrZ2gOS6itm7dWl2s5TwHat9gR45Ur793jMkztWmudvz+97Wn/0KxZdOmgtU4e/Z83XzzNf2P2kLkNWJytdeGpUp0fRM/0+HN3EzHN3xXXXVVp3FdHtumjq+LXbbVIqjLEaFh8xwUUI0Ty69gva88XPWVr5TTiyfTYv+y/+/vrMMvvVSQ+UX/xf3GcrbAJGuHu+xxvFINPZw3aG/UiRMnqot2jtI4K+dajdP1BNsu22tz6vJj4+3YaRdd5vnGG29Uamq6X8SzSzV9LnsXwpWtrXu9DRsKcmcE1MR7T13c27j6t9Pt8FUXXU5xaafDrOV9dhnXzsVeq221PUld5jBszKoP57Vjke1cpJVJtA3v3Lmzunj88ceXjyuO2v3XttflUNeBAwfq1ltvrQ0jFpsWRu047DhtG88888zYx7Vr167qoss8Vw4hAsB6uv/+++uuu+4auX62gLrllltqnL179y6vn+PW4i7bato5TK0vRv1EYNdDg13n2WVtf/s826HCgwcP1oMPPjhw/NDDee0Tb7/99ndcP+5HHdvtLXq66PJ7cK699trav39/ddHlxzD37dtXXYz7scm1nicArJW2hu3evXv5shba+Uld1+Iuv5bgjjvuqC7GrevrMc8XXnhh6PjpUQ9skHGRsprfJbHWvzhu3PZW82sGxo29nPMEgFEu56/VGXffq3lsa7mup0adVuRoOgBAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQEQBAAREFABAQERRAMDqiSgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgICIAgAIiCgAgMDssBumpqaK9bNx48Z3XldL/SeimGD+mfGn2fTm/3cWk2lqavOA67xwrKdB6/OKoRF17ty5evnll2thYaF4d83NzdWRI0fecf2RzZvryF9trzPnl4rJ0ztxsv8vsP+P86X/ralzZwtWp72wv/jmx8eLyTQ7e76W3rYEWJ/Xz7D1ecXU/Px8b2Zmpg4dOlS9Xu/ilW9W7srfWR/T09P9fywX/7VM95+Dix95xzHxeiIZGG56ur8eLFmfL6dL1+dm586ddd111w3eE+XJuTwufYKW3noOPBcAf8lWAqqxPl8eS0uD3+w6sRwAIPBWRKlbAIDxWjO1Q6uzK3/ZunXr8jE/AAAGW1xcrE2bNi0f4luOqPbBe9/7XnujAABGaHugWje1y/8BazdUIZcDD3gAAAAASUVORK5CYIKNNSGvWWTIr9s9FEv/Nemcwe9qfffBlivLie3sAyFQOg==";
 
-/* ---------- 世界の大きさ: 横480 x 縦360 (単位は共通) ---------- */
-const W = 480, H = 360;
-const ROBOT_LEN = 24, ROBOT_WID = 20;
-const SENS_F = 14;                  // 車体中心からセンサーまでの前方距離
-const SENS_OFF = [-6, -2, 2, 6];    // L2 L1 R1 R2 (右が +)
-const START = {x:-57, y:-20, d:0};  // d: 上向き0度、時計回りが +
+/* ================= 世界 (単位: cm) ================= */
+const W = 200, H = 200;                 // コースは 2m x 2m (4 m^2)。画像を正方形に合わせて貼る
+const WHEEL_R = 3.2, TRACK = 11.5;      // 車輪の半径 / 左右の車輪の間隔
+const RPM_TO_CMS = Math.PI * WHEEL_R * 2 / 60;   // 1 rpm あたりの cm/s
+const POWER_TO_RPM = 1.6;               // 動力 1% あたりの rpm (100% = 160 rpm)
+const SENS_F = 9;                       // 車輪の軸からセンサーまでの距離
+const SENS_OFF = [-2.4, -0.8, 0.8, 2.4];// L2 L1 R1 R2 (右が +)
+const SENS_POS = [-3, -1, 1, 3];
+const DT = 1/60;
 
-/* ---------- 状態 ---------- */
-const S = {x:START.x, y:START.y, d:START.d, last:1, ang:0, prev:null, mode:"idle", sens:[0,0,0,0], view:"orbit"};
-const keys = {};
+/* 画像上の色マスの中心 (ピクセル) → cm */
+const IMG_W = 593, IMG_H = 445;
+const px2cm = (px, py) => [ (px/IMG_W - .5) * W, (.5 - py/IMG_H) * H ];
 const ORDER = [
-  {k:"green",  n:"緑", x:-108, y: 117, c:"#1fe04a"},
-  {k:"blue",   n:"青", x: 108, y: 117, c:"#3a63ff"},
-  {k:"red",    n:"赤", x:-108, y:-117, c:"#ff4040"},
-  {k:"yellow", n:"黄", x: 108, y:-117, c:"#ffe21a"}
+  {k:"green",  n:"緑", c:"#1fe04a", p:px2cm(163.5, 78.5)},
+  {k:"blue",   n:"青", c:"#3a63ff", p:px2cm(429.5, 78.5)},
+  {k:"red",    n:"赤", c:"#ff4040", p:px2cm(163.5, 367.5)},
+  {k:"yellow", n:"黄", c:"#ffe21a", p:px2cm(429.5, 367.5)}
 ];
-const MS = {on:false, step:0, done:false, t:0};
+const MS = {step:0, done:false, t:0};
 
-/* ---------- レンダラー ---------- */
+/* ================= 状態 ================= */
+const S = {x:0, y:0, d:0, odo:0, em1:0, em2:0, vL:0, vR:0, sens:[0,0,0,0], manual:false, view:"orbit", simT:0};
+const keys = {};
+let startLineX = -23.5;                 // 画像から読み取った線の位置 (読み込み後に更新)
+
+/* ================= 3D ================= */
 const canvas = document.getElementById("c");
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
@@ -161,37 +193,29 @@ renderer.shadowMap.enabled = true;
 renderer.outputEncoding = THREE.sRGBEncoding;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0e131c);
-scene.fog = new THREE.Fog(0x0e131c, 700, 1400);
-
-const camera = new THREE.PerspectiveCamera(45, 1, 1, 3000);
-camera.position.set(0, 300, 330);
+const camera = new THREE.PerspectiveCamera(45, 1, 1, 2000);
 const controls = new THREE.OrbitControls(camera, canvas);
-controls.target.set(0, 0, 0);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI/2 - 0.04;
-controls.minDistance = 40; controls.maxDistance = 900;
+controls.minDistance = 15; controls.maxDistance = 420;
 
 scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a3040, 0.85));
 const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-sun.position.set(160, 320, 120);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, {left:-280, right:280, top:240, bottom:-240, near:10, far:900});
+sun.position.set(70, 140, 50); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, {left:-130, right:130, top:130, bottom:-130, near:10, far:400});
 scene.add(sun);
 
-/* ---------- フィールド ---------- */
-const base = new THREE.Mesh(new THREE.BoxGeometry(W+16, 10, H+16), new THREE.MeshStandardMaterial({color:0x1b2232, roughness:.9}));
-base.position.y = -5.2; base.receiveShadow = true; scene.add(base);
-
+const base = new THREE.Mesh(new THREE.BoxGeometry(W+8, 6, H+8), new THREE.MeshStandardMaterial({color:0x1b2232, roughness:.9}));
+base.position.y = -3.05; base.receiveShadow = true; scene.add(base);
 const fieldTex = new THREE.TextureLoader().load(FIELD_IMG);
 fieldTex.encoding = THREE.sRGBEncoding;
 fieldTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({map:fieldTex, roughness:.95, metalness:0}));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({map:fieldTex, roughness:.95}));
 ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
 
-/* センサー判定用に、同じ画像を 2倍解像度のキャンバスへ */
+/* センサー判定用: 同じ画像を 1cm = 5px のキャンバスへ */
+const SC = 5;
 let pix = null;
-const SC = 2;
 const img = new Image();
 img.onload = function(){
   const cv = document.createElement("canvas"); cv.width = W*SC; cv.height = H*SC;
@@ -199,231 +223,451 @@ img.onload = function(){
   cx.imageSmoothingEnabled = false;
   cx.drawImage(img, 0, 0, cv.width, cv.height);
   pix = cx.getImageData(0, 0, cv.width, cv.height).data;
+  findLine();
+  if(!running) resetPose();
 };
 img.src = FIELD_IMG;
-function isBlack(x, y){
-  if(!pix) return false;
-  const ix = Math.floor((x + W/2) * SC), iy = Math.floor((H/2 - y) * SC);
-  if(ix < 0 || iy < 0 || ix >= W*SC || iy >= H*SC) return false;
-  const i = (iy * W * SC + ix) * 4;
-  return pix[i] + pix[i+1] + pix[i+2] < 120;
-}
-
-function colorAt(x, y){
+function rgbAt(x, y){
   if(!pix) return null;
   const ix = Math.floor((x + W/2) * SC), iy = Math.floor((H/2 - y) * SC);
   if(ix < 0 || iy < 0 || ix >= W*SC || iy >= H*SC) return null;
-  const i = (iy * W * SC + ix) * 4, r = pix[i], g = pix[i+1], b = pix[i+2];
-  if(r < 90  && g > 170 && b < 90)  return "green";
-  if(r < 90  && g < 90  && b > 170) return "blue";
-  if(r > 170 && g < 90  && b < 90)  return "red";
+  const i = (iy * W * SC + ix) * 4;
+  return [pix[i], pix[i+1], pix[i+2]];
+}
+function isBlack(x, y){ const c = rgbAt(x, y); return !!c && c[0] + c[1] + c[2] < 120; }
+function colorName(x, y){
+  const c = rgbAt(x, y); if(!c) return null;
+  const [r, g, b] = c;
+  if(r + g + b < 120) return "black";
+  if(r < 90 && g > 170 && b < 90) return "green";
+  if(r < 90 && g < 90 && b > 170) return "blue";
+  if(r > 170 && g < 90 && b < 90) return "red";
   if(r > 170 && g > 170 && b < 110) return "yellow";
+  if(r > 200 && g > 200 && b > 200) return "white";
   return null;
 }
+function findLine(){                       // 中央の四角の左の線の中心を探す
+  let sum = 0, n = 0;
+  for(let x = -32; x <= -14; x += .1){ if(isBlack(x, 0)){ sum += x; n++; } }
+  if(n) startLineX = sum / n;
+}
 
-/* ---------- mBot2 モデル (前が -Z, 右が +X) ---------- */
+/* mBot2 (前 = -Z, 右 = +X。原点は左右の車輪の中心) */
 const robot = new THREE.Group();
-const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.5, metalness:.15}, o||{}));
+const MAT = (c, o) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.5, metalness:.15}, o||{}));
 function part(geo, mat, x, y, z){ const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; robot.add(m); return m; }
-part(new THREE.BoxGeometry(ROBOT_WID, 7, ROBOT_LEN), M(0x2b9fd8), 0, 9, 0);                    // 本体
-part(new THREE.BoxGeometry(ROBOT_WID+1, 1.2, ROBOT_LEN-6), M(0x16597a), 0, 12.9, 2);            // 上板
-part(new THREE.BoxGeometry(14, 2.2, 9), M(0x1a1f2b), 0, 14.5, 3);                                // CyberPi
-part(new THREE.BoxGeometry(10, .3, 5.5), M(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, 15.7, 3);  // 画面
-[-1, 1].forEach(s => {                                                                          // 車輪
-  const w = part(new THREE.CylinderGeometry(5, 5, 3.4, 28), M(0x15181f, {roughness:.8}), s*11.7, 5, 2);
+part(new THREE.BoxGeometry(9.6, 4.2, 15.5), MAT(0x2b9fd8), 0, 4.6, -1.8);
+part(new THREE.BoxGeometry(10.2, .7, 11), MAT(0x16597a), 0, 7.1, -0.5);
+part(new THREE.BoxGeometry(7.4, 1.2, 5.4), MAT(0x1a1f2b), 0, 8, 0.6);
+part(new THREE.BoxGeometry(5.4, .2, 3.2), MAT(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, 8.7, 0.6);
+const wheels = [-1, 1].map(s => {
+  const w = part(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 2.4, 28), MAT(0x15181f, {roughness:.8}), s*5.75, WHEEL_R, 0);
   w.rotation.z = Math.PI/2;
-  const hub = part(new THREE.CylinderGeometry(2.2, 2.2, 3.6, 16), M(0xc9d2e3), s*11.7, 5, 2);
-  hub.rotation.z = Math.PI/2;
+  const hub = part(new THREE.CylinderGeometry(1.2, 1.2, 2.6, 16), MAT(0xc9d2e3), s*5.75, WHEEL_R, 0);
+  hub.rotation.z = Math.PI/2; return w;
 });
-part(new THREE.SphereGeometry(2, 16, 12), M(0xf0f0f0), 0, 2, 10);                                // キャスター
-part(new THREE.BoxGeometry(18, 1.6, 3), M(0x2a3040), 0, 3.2, -13);                               // センサーバー
-part(new THREE.ConeGeometry(2.6, 5, 4), M(0xffffff), 0, 13.6, -9).rotation.x = -Math.PI/2;       // 前向きの目印
+part(new THREE.SphereGeometry(1, 16, 12), MAT(0xf0f0f0), 0, 1, 5.6);
+part(new THREE.BoxGeometry(7.6, .6, 1.6), MAT(0x2a3040), 0, 1.7, -9.2);
+part(new THREE.ConeGeometry(1.4, 3, 4), MAT(0xffffff), 0, 7.4, -6).rotation.x = -Math.PI/2;
 scene.add(robot);
 
-/* センサー点 (地面上) */
 const sensMats = [], sensMeshes = SENS_OFF.map(() => {
   const mat = new THREE.MeshBasicMaterial({color:0xff4d4d});
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, .6, 16), mat);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .2, 14), mat); m.position.y = .12;
   scene.add(m); sensMats.push(mat); return m;
 });
 
-/* 走行の軌跡 */
-const MAX_TRAIL = 6000;
+/* 走った軌跡 */
+const MAX_TRAIL = 8000;
 const trailGeo = new THREE.BufferGeometry();
 const trailPos = new Float32Array(MAX_TRAIL * 3);
 trailGeo.setAttribute("position", new THREE.BufferAttribute(trailPos, 3));
 trailGeo.setDrawRange(0, 0);
 const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({color:0xffb020}));
-trail.position.y = .5; trail.frustumCulled = false; scene.add(trail);
-let trailN = 0;
+trail.position.y = .2; trail.frustumCulled = false; scene.add(trail);
+let trailN = 0, trailSkip = 0;
+function trailClear(){ trailN = 0; trailGeo.setDrawRange(0, 0); }
 function trailPush(x, y){
+  if(++trailSkip % 3) return;
   if(trailN >= MAX_TRAIL){ trailPos.copyWithin(0, 3); trailN = MAX_TRAIL - 1; }
   trailPos.set([x, 0, -y], trailN*3); trailN++;
   trailGeo.setDrawRange(0, trailN); trailGeo.attributes.position.needsUpdate = true;
 }
 
-/* ---------- 物理 / 制御 ---------- */
+/* ================= ロボットの動き ================= */
 const rad = a => a * Math.PI / 180;
-function sensorXY(i){
-  const r = rad(S.d), o = SENS_OFF[i];
-  return [S.x + SENS_F*Math.sin(r) + o*Math.cos(r), S.y + SENS_F*Math.cos(r) - o*Math.sin(r)];
+function sensorXY(i, f){
+  const r = rad(S.d), o = SENS_OFF[i], F = f === undefined ? SENS_F : f;
+  return [S.x + F*Math.sin(r) + o*Math.cos(r), S.y + F*Math.cos(r) - o*Math.sin(r)];
 }
-function readSensors(){
-  for(let i=0;i<4;i++){ const p = sensorXY(i); S.sens[i] = isBlack(p[0], p[1]) ? 1 : 0; }
+function readSensors(){ for(let i=0;i<4;i++){ const p = sensorXY(i); S.sens[i] = isBlack(p[0], p[1]) ? 1 : 0; } }
+function lineOffset(){                      // -100 (左) 〜 +100 (右)。線が見えないときは 0
+  let sum = 0, n = 0;
+  for(let i=0;i<4;i++) if(S.sens[i]){ sum += SENS_POS[i]; n++; }
+  return n ? sum / n * 33.3 : 0;
 }
-const ui = {
-  speed: document.getElementById("speed"), gain: document.getElementById("gain"),
-  speedV: document.getElementById("speedV"), gainV: document.getElementById("gainV"),
-  hudStatus: document.getElementById("hudStatus"), hudInfo: document.getElementById("hudInfo"),
-  sens: ["sL2","sL1","sR1","sR2"].map(id => document.getElementById(id))
-};
-function tick(){
+
+function physics(){
+  if(!running && S.manual){
+    const fwd = (keys.ArrowUp || keys.w ? 1 : 0) - (keys.ArrowDown || keys.s ? 1 : 0);
+    const trn = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+    const l = fwd*100 + trn*60, r = fwd*100 - trn*60;
+    S.em1 = l; S.em2 = -r;
+  } else if(!running){ S.em1 = 0; S.em2 = 0; }
+  S.vL = S.em1 * RPM_TO_CMS;                // 左の車輪 (EM1): 正で前進
+  S.vR = -S.em2 * RPM_TO_CMS;               // 右の車輪 (EM2): 向きが逆なので負で前進
+  const v = (S.vL + S.vR) / 2, w = (S.vL - S.vR) / TRACK;       // w: 時計回りが +
+  const dd = w * DT * 180 / Math.PI;
+  const r = rad(S.d + dd/2);
+  S.d += dd;
+  S.x += v * DT * Math.sin(r); S.y += v * DT * Math.cos(r);
+  S.x = Math.max(-W/2 + 3, Math.min(W/2 - 3, S.x)); S.y = Math.max(-H/2 + 3, Math.min(H/2 - 3, S.y));
+  S.odo += Math.abs(v) * DT;
+  S.simT += DT;
   readSensors();
-  const speed = +ui.speed.value, K = +ui.gain.value;
-  let move = 0;
-  if(S.mode === "auto"){
-    const [L2,L1,R1,R2] = S.sens, tot = L2+L1+R1+R2;
-    const err = (R1 + 2*R2) - (L1 + 2*L2);
-    if(tot === 0){ S.d += 8 * S.last; }          // 見失った: 最後に見えた側へ
-    else if(tot >= 3){ S.d += 10; }              // 直角の角: 右(時計回り)へ
-    else { S.d += K * err; if(err > 0) S.last = 1; else if(err < 0) S.last = -1; }
-    move = speed;
-  } else if(S.mode === "nav" && MS.on && !MS.done){
-    const t = ORDER[MS.step];
-    const hd = Math.atan2(t.x - S.x, t.y - S.y) * 180 / Math.PI;
-    const df = ((hd - S.d + 540) % 360 + 360) % 360 - 180;
-    S.d += Math.max(-5, Math.min(5, df));
-    move = speed * (Math.abs(df) < 25 ? 1 : .3);
-  } else if(S.mode === "manual"){
-    if(keys.ArrowLeft || keys.a)  S.d -= 3;
-    if(keys.ArrowRight || keys.d) S.d += 3;
-    if(keys.ArrowUp || keys.w)    move = speed;
-    if(keys.ArrowDown || keys.s)  move = -speed * .6;
-  }
-  if(move){
-    const r = rad(S.d);
-    S.x += move * Math.sin(r); S.y += move * Math.cos(r);
-    S.x = Math.max(-W/2+6, Math.min(W/2-6, S.x)); S.y = Math.max(-H/2+6, Math.min(H/2-6, S.y));
-    trailPush(S.x, S.y);
-    const a = Math.atan2(S.y, S.x);
-    if(S.prev !== null){ let da = a - S.prev; da = ((da + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI; S.ang += da; }
-    S.prev = a;
-  }
-  if(MS.on && !MS.done){
-    if(S.mode !== "idle") MS.t += 1/60;
-    if(colorAt(S.x, S.y) === ORDER[MS.step].k){
-      MS.step++;
-      if(MS.step >= ORDER.length){ MS.done = true; S.mode = "idle"; setStatus(); }
-      renderMission();
+  if(Math.abs(v) > .05 || Math.abs(w) > .02) trailPush(S.x, S.y);
+  // 課題: 車体の中心(車輪の軸)が、順番どおりの色の上にあるか
+  if(!MS.done){
+    if(running || (S.manual && (Math.abs(v) > .05 || Math.abs(w) > .02))) MS.t += DT;
+    if(colorName(S.x, S.y) === ORDER[MS.step].k){
+      MS.step++; if(MS.step >= ORDER.length) MS.done = true; renderMission();
     }
   }
 }
 
-/* ---------- 画面への反映 ---------- */
+/* ================= ブロックから呼ぶ命令 (R) ================= */
+const STOP = {stop:true};
+let running = false, stopFlag = false, waiters = [], t0 = 0, runId = 0;
+const R = {
+  tick(){ return new Promise((res, rej) => { if(stopFlag) rej(STOP); else waiters.push({res, rej}); }); },
+  async wait(sec){ const end = S.simT + Math.max(0, +sec || 0); while(S.simT < end) await R.tick(); },
+  power(a, b){ S.em1 = clamp(+a || 0, -100, 100) * POWER_TO_RPM; S.em2 = clamp(+b || 0, -100, 100) * POWER_TO_RPM; },
+  speed(a, b){ S.em1 = clamp(+a || 0, -200, 200); S.em2 = clamp(+b || 0, -200, 200); },
+  stop(){ S.em1 = 0; S.em2 = 0; },
+  async straight(cm, rpm){                 // cm が負なら後退。進み終わるまで待つ
+    const dist = Math.abs(+cm || 0), sp = clamp(Math.abs(+rpm || 0), 0, 200), dir = (+cm || 0) < 0 ? -1 : 1;
+    if(!dist || !sp){ R.stop(); return; }
+    const o0 = S.odo; S.em1 = dir*sp; S.em2 = -dir*sp;
+    while(S.odo - o0 < dist) await R.tick();
+    R.stop();
+  },
+  async turn(deg, rpm){                    // deg が正なら右(時計回り)に回転
+    const a = Math.abs(+deg || 0), sp = clamp(Math.abs(+rpm || 0), 0, 200), dir = (+deg || 0) < 0 ? -1 : 1;
+    if(!a || !sp){ R.stop(); return; }
+    const d0 = S.d; S.em1 = dir*sp; S.em2 = dir*sp;
+    while(Math.abs(S.d - d0) < a) await R.tick();
+    R.stop();
+  },
+  line(n){ return !!S.sens[["L2","L1","R1","R2"].indexOf(n)]; },
+  offset(){ return lineOffset(); },
+  colorIs(c){ const p = sensorXY(0, SENS_F); const q = sensorXY(3, SENS_F); return colorName((p[0]+q[0])/2, (p[1]+q[1])/2) === c; },
+  timer(){ return S.simT - t0; },
+  resetTimer(){ t0 = S.simT; }
+};
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function flushWaiters(){ const w = waiters; waiters = []; w.forEach(x => x.res()); }
+
+/* ================= ブロック (Blockly) ================= */
+const ui = {
+  hudStatus: document.getElementById("hudStatus"), hudInfo: document.getElementById("hudInfo"),
+  sens: ["sL2","sL1","sR1","sR2"].map(id => document.getElementById(id)),
+  kOff: document.getElementById("kOff"), kWheel: document.getElementById("kWheel"), kOdo: document.getElementById("kOdo"),
+  msg: document.getElementById("msg")
+};
+let ws = null, blocklyOK = typeof Blockly !== "undefined" && Blockly.JavaScript;
+function toast(t){ ui.msg.textContent = t; ui.msg.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => ui.msg.classList.remove("show"), 4500); }
+
+const NUM = (n) => `<shadow type="math_number"><field name="NUM">${n}</field></shadow>`;
+const TOOLBOX = `<xml>
+<category name="スタート" colour="45"><block type="mbot2_start"></block></category>
+<category name="動き" colour="205">
+  <block type="mbot2_straight"><value name="CM">${NUM(30)}</value><value name="RPM">${NUM(60)}</value></block>
+  <block type="mbot2_turn"><value name="DEG">${NUM(90)}</value><value name="RPM">${NUM(40)}</value></block>
+  <block type="mbot2_drive_power"><value name="A">${NUM(40)}</value><value name="B">${NUM(-40)}</value></block>
+  <block type="mbot2_drive_speed"><value name="A">${NUM(60)}</value><value name="B">${NUM(-60)}</value></block>
+  <block type="mbot2_stop"></block>
+</category>
+<category name="センサー" colour="180">
+  <block type="mbot2_line"></block>
+  <block type="mbot2_offset"></block>
+  <block type="mbot2_color"></block>
+  <block type="mbot2_timer"></block>
+  <block type="mbot2_timer_reset"></block>
+</category>
+<category name="制御" colour="120">
+  <block type="mbot2_forever"></block>
+  <block type="mbot2_wait"><value name="SEC">${NUM(1)}</value></block>
+  <block type="controls_repeat_ext"><value name="TIMES">${NUM(4)}</value></block>
+  <block type="controls_whileUntil"></block>
+  <block type="controls_if"></block>
+  <block type="controls_if"><mutation else="1"></mutation></block>
+  <block type="controls_flow_statements"></block>
+</category>
+<category name="論理" colour="210">
+  <block type="logic_compare"></block><block type="logic_operation"></block><block type="logic_negate"></block><block type="logic_boolean"></block>
+</category>
+<category name="演算" colour="230">
+  <block type="math_number"><field name="NUM">0</field></block><block type="math_arithmetic"></block>
+  <block type="math_single"></block><block type="math_round"></block>
+</category>
+<category name="変数" colour="330" custom="VARIABLE"></category>
+</xml>`;
+
+if(blocklyOK){
+  const J = [
+    {type:"mbot2_start", message0:"▶ プログラムを開始したとき", nextStatement:null, colour:45, tooltip:"このブロックの下につないだブロックが実行されます"},
+    {type:"mbot2_straight", message0:"%1 %2 cm  速さ %3 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
+     args0:[{type:"field_dropdown", name:"DIR", options:[["前進","F"],["後退","B"]]}, {type:"input_value", name:"CM", check:"Number"}, {type:"input_value", name:"RPM", check:"Number"}],
+     tooltip:"指定した距離だけ進んでから止まります"},
+    {type:"mbot2_turn", message0:"%1 に %2 度 回転  速さ %3 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
+     args0:[{type:"field_dropdown", name:"DIR", options:[["右","R"],["左","L"]]}, {type:"input_value", name:"DEG", check:"Number"}, {type:"input_value", name:"RPM", check:"Number"}],
+     tooltip:"指定した角度だけその場で回転します"},
+    {type:"mbot2_drive_power", message0:"モーター動力  EM1 %1 %  EM2 %2 %", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
+     args0:[{type:"input_value", name:"A", check:"Number"}, {type:"input_value", name:"B", check:"Number"}],
+     tooltip:"EM1 は左の車輪。EM2 は右の車輪で、向きが逆なので前進は負の値です"},
+    {type:"mbot2_drive_speed", message0:"モーター速度  EM1 %1 rpm  EM2 %2 rpm", inputsInline:true, previousStatement:null, nextStatement:null, colour:205,
+     args0:[{type:"input_value", name:"A", check:"Number"}, {type:"input_value", name:"B", check:"Number"}],
+     tooltip:"EM1 は左の車輪。EM2 は右の車輪で、向きが逆なので前進は負の値です"},
+    {type:"mbot2_stop", message0:"モーターを止める", previousStatement:null, nextStatement:null, colour:205},
+    {type:"mbot2_line", message0:"クアッドRGB  %1 が黒い線の上", output:"Boolean", colour:180,
+     args0:[{type:"field_dropdown", name:"S", options:[["L2","L2"],["L1","L1"],["R1","R1"],["R2","R2"]]}]},
+    {type:"mbot2_offset", message0:"クアッドRGB  ライン偏差 (-100〜100)", output:"Number", colour:180, tooltip:"線が右にあるほど大きく、左にあるほど小さくなります。線が見えないときは 0"},
+    {type:"mbot2_color", message0:"足元の色が %1", output:"Boolean", colour:180,
+     args0:[{type:"field_dropdown", name:"C", options:[["緑","green"],["青","blue"],["赤","red"],["黄","yellow"],["白","white"],["黒","black"]]}]},
+    {type:"mbot2_timer", message0:"タイマー (秒)", output:"Number", colour:180},
+    {type:"mbot2_timer_reset", message0:"タイマーをリセット", previousStatement:null, nextStatement:null, colour:180},
+    {type:"mbot2_forever", message0:"ずっと %1 %2", previousStatement:null, colour:120,
+     args0:[{type:"input_dummy"}, {type:"input_statement", name:"DO"}]},
+    {type:"mbot2_wait", message0:"%1 秒待つ", inputsInline:true, previousStatement:null, nextStatement:null, colour:120,
+     args0:[{type:"input_value", name:"SEC", check:"Number"}]}
+  ];
+  Blockly.defineBlocksWithJsonArray(J);
+  const G = Blockly.JavaScript, F = G.forBlock;
+  const val = (b, n) => G.valueToCode(b, n, 99) || "0";
+  F.mbot2_start = () => "";
+  F.mbot2_straight = (b) => `await R.straight(${b.getFieldValue("DIR") === "B" ? "-" : ""}(${val(b,"CM")}), ${val(b,"RPM")});\n`;
+  F.mbot2_turn = (b) => `await R.turn(${b.getFieldValue("DIR") === "L" ? "-" : ""}(${val(b,"DEG")}), ${val(b,"RPM")});\n`;
+  F.mbot2_drive_power = (b) => `R.power(${val(b,"A")}, ${val(b,"B")});\n`;
+  F.mbot2_drive_speed = (b) => `R.speed(${val(b,"A")}, ${val(b,"B")});\n`;
+  F.mbot2_stop = () => "R.stop();\n";
+  F.mbot2_line = (b) => [`R.line("${b.getFieldValue("S")}")`, 0];
+  F.mbot2_offset = () => ["R.offset()", 0];
+  F.mbot2_color = (b) => [`R.colorIs("${b.getFieldValue("C")}")`, 0];
+  F.mbot2_timer = () => ["R.timer()", 0];
+  F.mbot2_timer_reset = () => "R.resetTimer();\n";
+  F.mbot2_forever = (b) => `while (true) {\n${G.addLoopTrap(G.statementToCode(b, "DO"), b)}}\n`;
+  F.mbot2_wait = (b) => `await R.wait(${val(b,"SEC")});\n`;
+
+  ws = Blockly.inject("blockly", {
+    toolbox: Blockly.utils.xml.textToDom(TOOLBOX), trashcan:true, sounds:false,
+    zoom:{controls:true, wheel:true, startScale:.85, minScale:.4, maxScale:1.6},
+    grid:{spacing:24, length:3, colour:"#e3e7ee", snap:true}
+  });
+  new ResizeObserver(() => Blockly.svgResize(ws)).observe(document.getElementById("blocks"));
+}
+
+/* ----- サンプル (XML) ----- */
+const X = {
+  b(type, o){ o = o || {};
+    return `<block type="${type}">` + (o.m || "") +
+      Object.entries(o.f || {}).map(([k,v]) => `<field name="${k}">${v}</field>`).join("") +
+      Object.entries(o.v || {}).map(([k,v]) => `<value name="${k}">${v}</value>`).join("") +
+      Object.entries(o.s || {}).map(([k,v]) => `<statement name="${k}">${v}</statement>`).join("") +
+      (o.n ? `<next>${o.n}</next>` : "") + `</block>`; },
+  num(n){ return X.b("math_number", {f:{NUM:+(+n).toFixed(1)}}); },
+  seq(items){ let nx = ""; for(let i = items.length - 1; i >= 0; i--){ const [t, o] = items[i]; nx = X.b(t, Object.assign({}, o, {n:nx})); } return nx; },
+  varGet(){ return `<block type="variables_get"><field name="VAR" id="v_last">last</field></block>`; },
+  arith(op, a, b){ return X.b("math_arithmetic", {f:{OP:op}, v:{A:a, B:b}}); }
+};
+function setLastBlock(v){ return `<block type="variables_set"><field name="VAR" id="v_last">last</field><value name="VALUE">${X.num(v)}</value>__NEXT__</block>`; }
+function sampleLine(){
+  const off = X.b("mbot2_offset");
+  const nobody = X.b("logic_negate", {v:{BOOL: X.b("logic_operation", {f:{OP:"OR"}, v:{
+      A: X.b("logic_operation", {f:{OP:"OR"}, v:{A:X.b("mbot2_line",{f:{S:"L2"}}), B:X.b("mbot2_line",{f:{S:"L1"}})}}),
+      B: X.b("logic_operation", {f:{OP:"OR"}, v:{A:X.b("mbot2_line",{f:{S:"R1"}}), B:X.b("mbot2_line",{f:{S:"R2"}})}})}})}});
+  const turnLast = X.b("mbot2_drive_power", {v:{A:X.arith("MULTIPLY", X.varGet(), X.num(20)), B:X.arith("MULTIPLY", X.varGet(), X.num(20))}});
+  const follow = X.b("mbot2_drive_power", {v:{
+      A:X.arith("ADD", X.num(40), X.arith("MULTIPLY", off, X.num(1.2))),
+      B:X.arith("MINUS", X.num(0), X.arith("MINUS", X.num(40), X.arith("MULTIPLY", off, X.num(1.2))))},
+    n: X.b("controls_if", {m:"", v:{IF0:X.b("logic_compare",{f:{OP:"GT"}, v:{A:off, B:X.num(0)}})}, s:{DO0:setLastBlock(1).replace("__NEXT__","")},
+      n: X.b("controls_if", {v:{IF0:X.b("logic_compare",{f:{OP:"LT"}, v:{A:off, B:X.num(0)}})}, s:{DO0:setLastBlock(-1).replace("__NEXT__","")}})})});
+  const ifelse = X.b("controls_if", {m:`<mutation else="1"></mutation>`, v:{IF0:nobody}, s:{DO0:turnLast, ELSE:follow}});
+  const forever = X.b("mbot2_forever", {s:{DO:ifelse}});
+  const body = setLastBlock(1).replace("__NEXT__", `<next>${forever}</next>`);
+  return `<xml><variables><variable id="v_last">last</variable></variables>` + X.b("mbot2_start", {n:body}) + `</xml>`;
+}
+function sampleMission(){
+  let hd = 0, x = 0, y = 0; const items = [];
+  const wrap = a => ((a + 540) % 360 + 360) % 360 - 180;
+  ORDER.forEach(o => {
+    const dx = o.p[0] - x, dy = o.p[1] - y, b = Math.atan2(dx, dy) * 180 / Math.PI, t = wrap(b - hd);
+    items.push(["mbot2_turn", {f:{DIR: t >= 0 ? "R" : "L"}, v:{DEG:X.num(Math.abs(t)), RPM:X.num(40)}}]);
+    items.push(["mbot2_straight", {f:{DIR:"F"}, v:{CM:X.num(Math.hypot(dx, dy)), RPM:X.num(60)}}]);
+    hd = b; x = o.p[0]; y = o.p[1];
+  });
+  items.push(["mbot2_stop", {}]);
+  return `<xml>` + X.b("mbot2_start", {n:X.seq(items)}) + `</xml>`;
+}
+function loadXml(xml){
+  if(!ws) return;
+  ws.clear();
+  Blockly.Xml.domToWorkspace(Blockly.utils.xml.textToDom(xml), ws);
+}
+function loadSample(name){
+  if(!ws) return;
+  if(name === "blank") loadXml("<xml>" + X.b("mbot2_start") + "</xml>");
+  else loadXml(name === "mission" ? sampleMission() : sampleLine());
+  document.getElementById("startPose").value = name === "mission" ? "center" : "line";
+  resetPose();
+}
+
+/* ----- 実行 ----- */
+function buildCode(){
+  const G = Blockly.JavaScript;
+  const hats = ws.getTopBlocks(true).filter(b => b.type === "mbot2_start");
+  if(!hats.length) return null;
+  G.init(ws);
+  G.INFINITE_LOOP_TRAP = "await R.tick();\n";
+  let body = "";
+  hats.forEach(h => { body += "__p.push((async () => {\n" + G.blockToCode(h) + "})());\n"; });
+  const code = G.finish("const __p = [];\n" + body + "await Promise.all(__p);\n");
+  G.INFINITE_LOOP_TRAP = null;
+  return code;
+}
+async function runProgram(){
+  if(!ws){ toast("ブロックエディターを読み込めませんでした (インターネット接続を確認してください)"); return; }
+  stopProgram();
+  let code;
+  try{ code = buildCode(); } catch(e){ toast("ブロックを読み取れませんでした: " + e.message); return; }
+  if(!code){ toast("「プログラムを開始したとき」のブロックが必要です"); return; }
+  resetPose();
+  const id = ++runId;
+  S.manual = false; waiters = []; stopFlag = false; running = true; R.resetTimer(); setStatus();
+  try{ await (new Function("R", "return (async () => {\n" + code + "\n})();"))(R); }
+  catch(e){ if(e !== STOP) toast("実行中にエラー: " + (e && e.message || e)); }
+  if(id !== runId) return;                 // 新しい実行が始まっていたら何もしない
+  R.stop(); running = false; setStatus();
+}
+function stopProgram(){
+  if(!running) return;
+  runId++; stopFlag = true; const w = waiters; waiters = []; w.forEach(x => x.rej(STOP));
+  R.stop(); running = false; setStatus();
+}
+
+/* ================= 画面 ================= */
+function resetPose(){
+  const center = document.getElementById("startPose").value === "center";
+  Object.assign(S, center ? {x:0, y:0, d:0} : {x:startLineX, y:-12, d:0});
+  S.odo = 0; S.em1 = 0; S.em2 = 0;
+  MS.step = 0; MS.done = false; MS.t = 0; renderMission(); trailClear(); readSensors();
+}
 function syncModel(){
   robot.position.set(S.x, 0, -S.y);
   robot.rotation.y = -rad(S.d);
+  wheels.forEach((w, i) => w.rotation.x = 0);
   for(let i=0;i<4;i++){
     const p = sensorXY(i);
-    sensMeshes[i].position.set(p[0], .5, -p[1]);
+    sensMeshes[i].position.set(p[0], .12, -p[1]);
     sensMats[i].color.set(S.sens[i] ? 0x39e07a : 0xff4d4d);
     ui.sens[i].classList.toggle("on", !!S.sens[i]);
   }
-  if(MS.on && !MS.done) renderMission();
-  ui.hudInfo.textContent = MS.on ? (MS.done ? "クリア " + MS.t.toFixed(1) + " 秒" : "つぎは「" + ORDER[MS.step].n + "」  " + MS.t.toFixed(1) + " 秒")
-                                  : "周回 " + Math.abs(S.ang / (2*Math.PI)).toFixed(2);
+  ui.kOff.textContent = S.sens.some(Boolean) ? lineOffset().toFixed(0) : "- (線なし)";
+  ui.kWheel.textContent = Math.round(S.vL / RPM_TO_CMS) + " / " + Math.round(S.vR / RPM_TO_CMS) + " rpm";
+  ui.kOdo.textContent = S.odo.toFixed(0) + " cm";
+  ui.hudInfo.textContent = MS.done ? "クリア " + MS.t.toFixed(1) + " 秒" : (MS.step ? "つぎは「" + ORDER[MS.step].n + "」  " : "") + MS.t.toFixed(1) + " 秒";
 }
+const bRun = document.getElementById("bRun"), bManual = document.getElementById("bManual");
 function setStatus(){
-  ui.hudStatus.textContent = S.mode === "auto" ? "オート走行中" : S.mode === "nav" ? "課題: 自動走行中" :
-    S.mode === "manual" ? (MS.on ? "課題: 手動操作中" : "手動操作中") : (MS.done ? "課題クリア" : "停止中");
-  bAuto.classList.toggle("active", S.mode === "auto"); bAuto.classList.toggle("primary", S.mode !== "auto");
-  bManual.classList.toggle("active", S.mode === "manual");
-  bAuto.textContent = S.mode === "auto" ? "■ 停止" : "▶ 線をたどる";
-  document.getElementById("pad").classList.toggle("show", S.mode === "manual");
+  ui.hudStatus.textContent = running ? "プログラム実行中" : S.manual ? "手動操作中" : "停止中";
+  bManual.classList.toggle("active", S.manual && !running);
+  document.getElementById("pad").classList.toggle("show", S.manual && !running);
 }
-const bAuto = document.getElementById("bAuto"), bManual = document.getElementById("bManual");
-bAuto.onclick = () => { MS.on = false; renderMission(); S.mode = S.mode === "auto" ? "idle" : "auto"; setStatus(); };
-bManual.onclick = () => { S.mode = S.mode === "manual" ? "idle" : "manual"; setStatus(); };
-document.getElementById("bReset").onclick = () => {
-  Object.assign(S, {x:START.x, y:START.y, d:START.d, last:1, ang:0, prev:null, mode:"idle"});
-  Object.assign(MS, {on:false, step:0, done:false, t:0}); renderMission();
-  trailN = 0; trailGeo.setDrawRange(0, 0); setStatus(); readSensors(); syncModel();
-};
+bRun.onclick = runProgram;
+document.getElementById("bStop").onclick = () => { stopProgram(); R.stop(); };
+bManual.onclick = () => { if(running) stopProgram(); S.manual = !S.manual; setStatus(); };
+document.getElementById("bReset").onclick = () => { stopProgram(); R.stop(); resetPose(); };
+document.getElementById("startPose").onchange = () => { stopProgram(); resetPose(); };
+document.getElementById("bLoad").onclick = () => { stopProgram(); loadSample(document.getElementById("sample").value); };
+
 const chipsEl = document.getElementById("chips"), mInfo = document.getElementById("mInfo");
 ORDER.forEach(o => { const d = document.createElement("div"); d.className = "chip"; d.textContent = o.n; chipsEl.appendChild(d); });
 function renderMission(){
   [...chipsEl.children].forEach((el, i) => {
-    const done = MS.on && i < MS.step, next = MS.on && !MS.done && i === MS.step;
+    const done = i < MS.step, next = !MS.done && i === MS.step;
     el.classList.toggle("done", done); el.classList.toggle("next", next);
     el.style.borderColor = done || next ? ORDER[i].c : ""; el.style.background = done ? ORDER[i].c : "";
   });
   mInfo.classList.toggle("clear", MS.done);
-  if(!MS.on) mInfo.textContent = "緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます";
-  else if(MS.done) mInfo.textContent = "クリア! タイム " + MS.t.toFixed(1) + " 秒";
-  else mInfo.textContent = "つぎは「" + ORDER[MS.step].n + "」  経過 " + MS.t.toFixed(1) + " 秒";
+  mInfo.textContent = MS.done ? "クリア! タイム " + MS.t.toFixed(1) + " 秒" : (MS.step ? "つぎは「" + ORDER[MS.step].n + "」" : "緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます");
 }
-function startMission(auto){
-  Object.assign(S, {x:0, y:0, d:0, last:1, ang:0, prev:null});
-  trailN = 0; trailGeo.setDrawRange(0, 0);
-  Object.assign(MS, {on:true, step:0, done:false, t:0});
-  S.mode = auto ? "nav" : "manual"; setStatus(); renderMission(); readSensors(); syncModel();
-}
-document.getElementById("mManual").onclick = () => startMission(false);
-document.getElementById("mAuto").onclick = () => startMission(true);
-ui.speed.oninput = () => ui.speedV.textContent = (+ui.speed.value).toFixed(1);
-ui.gain.oninput = () => ui.gainV.textContent = (+ui.gain.value).toFixed(1);
 
 const views = {orbit:document.getElementById("vOrbit"), follow:document.getElementById("vFollow"), top:document.getElementById("vTop")};
-function homeScale(){ const st = document.getElementById("stage"), a = st.clientWidth / Math.max(1, st.clientHeight); return Math.min(2.4, Math.max(1, 1.5 / a)); }
+function homeScale(){ const st = document.getElementById("stage"), a = st.clientWidth / Math.max(1, st.clientHeight); return Math.min(2.4, Math.max(1, 1.6 / a)); }
 function setView(v){
   S.view = v;
   Object.keys(views).forEach(k => views[k].classList.toggle("active", k === v));
   controls.enabled = (v === "orbit");
-  if(v === "orbit"){ controls.target.set(0, 0, 0); const f = homeScale(); camera.position.set(0, 300*f, 330*f); }
+  if(v === "orbit"){ controls.target.set(0, 0, 0); const f = homeScale(); camera.position.set(0, 120*f, 135*f); }
 }
 Object.keys(views).forEach(k => views[k].onclick = () => setView(k));
 
 window.addEventListener("keydown", e => {
+  if(/INPUT|SELECT|TEXTAREA/.test((e.target.tagName||"")) || (e.target.closest && e.target.closest("#blocks"))) return;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(k)){ keys[k] = true; if(S.mode === "manual") e.preventDefault(); }
-  else keys[k] = true;
+  keys[k] = true;
+  if(S.manual && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(k)) e.preventDefault();
 });
 window.addEventListener("keyup", e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
-
-function resize(){
-  const st = document.getElementById("stage"), w = Math.max(1, st.clientWidth), h = Math.max(1, st.clientHeight);
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-  if(S.view === "orbit" && !resize.done){ const f = homeScale(); camera.position.set(0, 300*f, 330*f); resize.done = true; }
-}
-window.addEventListener("resize", resize);
-new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
 document.querySelectorAll("#pad button").forEach(b => {
   const k = b.dataset.k, on = e => { keys[k] = true; e.preventDefault(); }, off = () => { keys[k] = false; };
   b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointerleave", off); b.addEventListener("pointercancel", off);
 });
 
+function resize(){
+  const st = document.getElementById("stage"), w = Math.max(1, st.clientWidth), h = Math.max(1, st.clientHeight);
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if(!resize.done && S.view === "orbit"){ const f = homeScale(); camera.position.set(0, 120*f, 135*f); resize.done = true; }
+}
+new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
 
-/* ---------- メインループ (制御は60Hz固定) ---------- */
-let last = performance.now(), acc = 0;
-const STEP = 1000/60;
-function frame(now){
-  acc += Math.min(now - last, 100); last = now;
+/* ブロックを自動保存 */
+function saveWs(){ try{ localStorage.setItem("mbot2sim.ws", Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
+if(ws){
+  let saved = null; try{ saved = localStorage.getItem("mbot2sim.ws"); }catch(e){}
+  let loaded = false;
+  if(saved){ try{ loadXml(saved); loaded = ws.getTopBlocks().length > 0; }catch(e){ loaded = false; } }
+  if(!loaded) loadSample("line");
+  let h; ws.addChangeListener(ev => { if(ev.isUiEvent) return; clearTimeout(h); h = setTimeout(saveWs, 400); });
+}
+
+/* ================= メインループ (動きは60Hz固定) ================= */
+let last = performance.now(), acc = 0, busy = false;
+const mc = new MessageChannel(); let mcRes = null;
+mc.port1.onmessage = () => { const r = mcRes; mcRes = null; if(r) r(); };
+const macro = () => new Promise(r => { mcRes = r; mc.port2.postMessage(0); });
+async function frame(now){
+  if(busy){ requestAnimationFrame(frame); return; }
+  busy = true;
+  acc += Math.min(now - last, 170); last = now;
   let n = 0;
-  while(acc >= STEP && n < 6){ tick(); acc -= STEP; n++; }
+  while(acc >= DT*1000 && n < 10){
+    physics(); acc -= DT*1000; n++;
+    if(waiters.length){ flushWaiters(); await macro(); }   // ブロックの判定を、動き1回ごとに行う
+  }
   syncModel();
   if(S.view === "follow"){
     const r = rad(S.d), fx = Math.sin(r), fz = -Math.cos(r);
-    const tx = S.x - fx*75, tz = -S.y - fz*75;
-    camera.position.lerp(new THREE.Vector3(tx, 48, tz), .12);
-    camera.lookAt(S.x + fx*25, 6, -S.y + fz*25);
+    camera.position.lerp(new THREE.Vector3(S.x - fx*32, 22, -S.y - fz*32), .12);
+    camera.lookAt(S.x + fx*10, 3, -S.y + fz*10);
   } else if(S.view === "top"){
-    camera.position.lerp(new THREE.Vector3(0, 520, .01), .12);
+    camera.position.lerp(new THREE.Vector3(0, 250*Math.max(1, homeScale()*.85), .01), .12);
     camera.lookAt(0, 0, 0);
   } else controls.update();
   renderer.render(scene, camera);
+  busy = false;
   requestAnimationFrame(frame);
 }
-renderMission(); setStatus(); readSensors(); syncModel();
+resetPose(); setStatus(); setView("orbit");
 requestAnimationFrame(frame);
 })();
 </script>
