@@ -46,6 +46,11 @@ def db_init(path):
         )
 
 
+class Server(ThreadingHTTPServer):
+    # Windows では、既定のままだと同じポートで二重に起動できてしまうので、禁止する
+    allow_reuse_address = os.name != "nt"
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "mbot2-sim-server"
     db_path = "programs.db"
@@ -118,7 +123,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(200, f.read(), "text/html; charset=utf-8")
             except OSError:
                 return self._error(404, "画面のファイルが見つかりません")
-        self._error(404, "見つかりません")
+        if path == "/favicon.ico":
+            return self._send(204)
+        self._error(404, "見つかりません。ブラウザでは「http://%s/」を開いてください" % (self.headers.get("Host") or "127.0.0.1:8080"))
 
     # ---- POST (保存。同じ名前があれば上書き) ----
     def do_POST(self):
@@ -171,7 +178,10 @@ def main():
     args = ap.parse_args()
     db_init(args.db)
     Handler.db_path = args.db
-    srv = ThreadingHTTPServer((args.host, args.port), Handler)
+    try:
+        srv = Server((args.host, args.port), Handler)
+    except OSError as e:
+        raise SystemExit("起動できませんでした (%s)。すでに別の server.py が動いていないか、ポート %d が使われていないか確認してください。" % (e, args.port))
     print("保存サーバーを起動しました:  http://%s:%d/   (データ: %s)   止めるには Ctrl+C" % (args.host, args.port, args.db))
     try:
         srv.serve_forever()
