@@ -58,6 +58,10 @@
   .plist button{flex:none;min-height:34px;padding:4px 10px;font-size:12px}
   #srvState{font-size:12px;color:var(--muted);margin:8px 0 0;line-height:1.5}
   #srvState.ok{color:var(--on)}
+  #srvResult[hidden]{display:none}
+  .idbox{flex:1;font-size:28px;font-weight:700;letter-spacing:.18em;text-align:center;padding:8px 4px;border:2px dashed var(--accent);border-radius:10px;font-variant-numeric:tabular-nums;user-select:all}
+  .idnote{font-size:12px;color:var(--muted);line-height:1.6;margin:8px 0 0}
+  .plist .code{font-variant-numeric:tabular-nums;letter-spacing:.08em;font-weight:600}
   #hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
   #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 11px;font-size:14px;font-variant-numeric:tabular-nums}
   #pad{position:absolute;right:14px;bottom:14px;display:none;gap:8px;align-items:flex-end}
@@ -114,14 +118,22 @@
     </div>
   </section>
 
-  <section class="card" id="srvCard" aria-label="学校のサーバー">
-    <h2>学校のサーバーに保存</h2>
-    <div class="row">
-      <input id="srvName" type="text" maxlength="60" placeholder="プログラムの名前" value="プログラム1" aria-label="プログラムの名前">
-      <button id="bSrvSave" type="button" style="flex:none;width:96px">保存</button>
+  <section class="card" id="srvCard" aria-label="IDで保存・呼び出し">
+    <h2>ID で保存・呼び出し (ログイン不要)</h2>
+    <div class="row"><button id="bSrvSave" type="button" class="primary">保存して ID をもらう</button></div>
+    <div id="srvResult" hidden>
+      <div class="row" style="margin-top:10px">
+        <output id="srvCode" class="idbox" aria-live="polite">------</output>
+        <button id="bSrvCopy" type="button" style="flex:none;width:76px">コピー</button>
+      </div>
+      <p class="idnote">この 6 桁の番号をメモしておくと、あとで呼び出せます。番号を知っている人は誰でも読み込めます。</p>
     </div>
+    <div class="row" style="margin-top:14px">
+      <input id="srvLoadCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6桁の ID" aria-label="呼び出す ID">
+      <button id="bSrvLoad" type="button" style="flex:none;width:88px">呼び出す</button>
+    </div>
+    <ul class="plist" id="srvList" aria-label="このブラウザで保存した ID"></ul>
     <p id="srvState">確認中…</p>
-    <ul class="plist" id="srvList"></ul>
   </section>
 
   <section class="card" aria-label="mBlock へ">
@@ -882,69 +894,83 @@ function exportMblock(){
   }catch(e){ toast("書き出しに失敗しました: " + e.message); }
 }
 
-/* ================= 学校のサーバーに保存 =================
-   server.py と同じアドレスから開いたときだけ使えます (GitHub Pages など、サーバーのない場所では使えません)。 */
-const srv = {ok:false, rows:[]};
-const srvEls = {state: document.getElementById("srvState"), name: document.getElementById("srvName"), list: document.getElementById("srvList"), save: document.getElementById("bSrvSave")};
+/* ================= ID で保存・呼び出し (ログイン不要) =================
+   server.py と同じアドレスから開いたときだけ使えます (GitHub Pages など、サーバーのない場所では使えません)。
+   保存すると 6 桁の ID が返り、あとでその ID を入れると同じプログラムを呼び出せます。 */
+const srv = {ok:false};
+const srvEls = {
+  state: document.getElementById("srvState"), list: document.getElementById("srvList"), save: document.getElementById("bSrvSave"),
+  load: document.getElementById("bSrvLoad"), loadCode: document.getElementById("srvLoadCode"), result: document.getElementById("srvResult"),
+  code: document.getElementById("srvCode"), copy: document.getElementById("bSrvCopy")
+};
 async function srvFetch(path, opt){
   const r = await fetch(path, opt);
   const j = await r.json().catch(() => ({}));
   if(!r.ok) throw new Error(j.error || ("エラー " + r.status));
   return j;
 }
-const fmtTime = sec => new Date(sec * 1000).toLocaleString("ja-JP", {month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit"});
-async function srvRefresh(){
+const fmtTime = ms => new Date(ms).toLocaleString("ja-JP", {month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit"});
+const MYIDS = "mbot2sim.myids";
+function myIds(){ try{ return JSON.parse(localStorage.getItem(MYIDS) || "[]"); }catch(e){ return []; } }
+function addMyId(code){ try{ const a = myIds().filter(x => x.code !== code); a.unshift({code, t:Date.now()}); localStorage.setItem(MYIDS, JSON.stringify(a.slice(0, 10))); }catch(e){} }
+function renderMyIds(){
   srvEls.list.textContent = "";
+  myIds().forEach(x => {
+    const li = document.createElement("li"), nm = document.createElement("span"), small = document.createElement("small");
+    nm.className = "nm"; const c = document.createElement("span"); c.className = "code"; c.textContent = x.code; small.textContent = "このブラウザで " + fmtTime(x.t) + " に保存";
+    nm.append(c, small);
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "呼び出す"; b.onclick = () => srvLoad(x.code);
+    li.append(nm, b); srvEls.list.appendChild(li);
+  });
+}
+async function srvInit(){
   try{
-    srv.rows = await srvFetch("/api/programs");
-    srv.ok = true;
-    srvEls.state.className = "ok"; srvEls.state.textContent = "サーバーにつながっています (" + srv.rows.length + " 件)";
-    srv.rows.forEach(r => {
-      const li = document.createElement("li"), nm = document.createElement("span"), small = document.createElement("small");
-      nm.className = "nm"; nm.textContent = r.name; small.textContent = fmtTime(r.updated_at); nm.appendChild(small);
-      const bl = document.createElement("button"), bd = document.createElement("button");
-      bl.type = bd.type = "button"; bl.textContent = "読み込む"; bd.textContent = "削除";
-      bl.onclick = () => srvLoad(r.id); bd.onclick = () => srvDelete(r);
-      li.append(nm, bl, bd); srvEls.list.appendChild(li);
-    });
+    await srvFetch("/api/ping"); srv.ok = true;
+    srvEls.state.className = "ok"; srvEls.state.textContent = "サーバーにつながっています";
   }catch(e){
-    srv.ok = false; srv.rows = [];
-    srvEls.state.className = ""; srvEls.state.textContent = "サーバーにつながっていません。server.py を起動して、そのアドレス (例: http://127.0.0.1:8080/) から開いてください。";
+    srv.ok = false; srvEls.state.className = "";
+    srvEls.state.textContent = "サーバーにつながっていません。server.py を起動して、そのアドレス (例: http://127.0.0.1:8080/) から開いてください。";
   }
-  srvEls.save.disabled = !srv.ok;
+  srvEls.save.disabled = srvEls.load.disabled = !srv.ok;
+  renderMyIds();
 }
 async function srvSave(){
   if(!ws || !srv.ok) return;
-  const name = srvEls.name.value.trim();
-  if(!name){ toast("プログラムの名前を入力してください"); return; }
-  if(srv.rows.some(r => r.name === name) && !confirm("「" + name + "」はすでに保存されています。上書きしますか?")) return;
   try{
     const xml = Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws));
     const res = await srvFetch("/api/programs", {method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({name, xml, startPose: document.getElementById("startPose").value})});
-    toast(res.updated ? "「" + name + "」を上書き保存しました" : "「" + name + "」を保存しました");
-    srvRefresh();
+      body: JSON.stringify({xml, startPose: document.getElementById("startPose").value})});
+    srvEls.code.textContent = res.code; srvEls.result.hidden = false;
+    addMyId(res.code); renderMyIds();
+    toast("保存しました。ID は " + res.code + " です");
   }catch(e){ toast("保存できませんでした: " + e.message); }
 }
-async function srvLoad(id){
-  if(!ws) return;
+async function srvLoad(code){
+  if(!ws || !srv.ok) return;
+  code = String(code || "").trim();
+  if(!/^[1-9][0-9]{5}$/.test(code)){ toast("ID は 6 桁の数字で入力してください"); return; }
+  if(ws.getAllBlocks().length > 0 && !confirm("いま画面にあるブロックは、呼び出したプログラムに置き換わります。よろしいですか?")) return;
   try{
-    const row = await srvFetch("/api/programs/" + id);
+    const row = await srvFetch("/api/programs/" + code);
     stopAll(); alive.clear(); threadCount = 0;
     loadXml(row.xml);
     document.getElementById("startPose").value = row.start_pose === "center" ? "center" : "line";
-    srvEls.name.value = row.name;
     resetPose(); setStatus();
-    toast("「" + row.name + "」を読み込みました");
-  }catch(e){ toast("読み込めませんでした: " + e.message); }
+    srvEls.loadCode.value = code;
+    toast("ID " + code + " のプログラムを呼び出しました");
+  }catch(e){ toast("呼び出せませんでした: " + e.message); }
 }
-async function srvDelete(r){
-  if(!confirm("「" + r.name + "」をサーバーから削除しますか?")) return;
-  try{ await srvFetch("/api/programs/" + r.id, {method:"DELETE"}); toast("「" + r.name + "」を削除しました"); srvRefresh(); }
-  catch(e){ toast("削除できませんでした: " + e.message); }
+async function srvCopy(){
+  const c = srvEls.code.textContent;
+  try{ await navigator.clipboard.writeText(c); toast("ID " + c + " をコピーしました"); }
+  catch(e){ const r = document.createRange(); r.selectNodeContents(srvEls.code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("ID を選択しました。Ctrl+C でコピーしてください"); }
 }
 srvEls.save.onclick = srvSave;
-srvEls.save.disabled = true;
+srvEls.load.onclick = () => srvLoad(srvEls.loadCode.value);
+srvEls.loadCode.addEventListener("keydown", e => { if(e.key === "Enter") srvLoad(srvEls.loadCode.value); });
+srvEls.loadCode.addEventListener("input", () => { srvEls.loadCode.value = srvEls.loadCode.value.replace(/[^0-9]/g, "").slice(0, 6); });
+srvEls.copy.onclick = srvCopy;
+srvEls.save.disabled = srvEls.load.disabled = true;
 
 /* ----- スレッド管理 ----- */
 function hatsOf(types, test){
@@ -1094,7 +1120,7 @@ async function frame(now){
   requestAnimationFrame(frame);
 }
 resetPose(); setStatus(); setView("orbit");
-srvRefresh();
+srvInit();
 requestAnimationFrame(frame);
 })();
 </script>
