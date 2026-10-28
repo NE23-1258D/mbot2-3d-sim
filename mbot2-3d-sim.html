@@ -134,6 +134,14 @@
     </div>
     <ul class="plist" id="srvList" aria-label="このブラウザで保存した ID"></ul>
     <p id="srvState">確認中…</p>
+    <details id="srvAddrBox" style="margin-top:8px">
+      <summary style="font-size:12px;color:var(--muted);cursor:pointer">サーバーのアドレス</summary>
+      <div class="row" style="margin-top:8px">
+        <input id="srvAddr" type="text" placeholder="http://127.0.0.1:8080" aria-label="サーバーのアドレス">
+        <button id="bSrvAddr" type="button" style="flex:none;width:72px">つなぐ</button>
+      </div>
+      <p class="idnote">公開ページから、このパソコンのサーバーを使うときは、サーバーを <code>--allow-origin https://ne23-1258d.github.io</code> をつけて起動してください。</p>
+    </details>
   </section>
 
   <section class="card" aria-label="mBlock へ">
@@ -897,14 +905,14 @@ function exportMblock(){
 /* ================= ID で保存・呼び出し (ログイン不要) =================
    server.py と同じアドレスから開いたときだけ使えます (GitHub Pages など、サーバーのない場所では使えません)。
    保存すると 6 桁の ID が返り、あとでその ID を入れると同じプログラムを呼び出せます。 */
-const srv = {ok:false};
+const srv = {ok:false, base:""};      // base: サーバーのアドレス ("" = この画面を配っているサーバー)
 const srvEls = {
   state: document.getElementById("srvState"), list: document.getElementById("srvList"), save: document.getElementById("bSrvSave"),
   load: document.getElementById("bSrvLoad"), loadCode: document.getElementById("srvLoadCode"), result: document.getElementById("srvResult"),
   code: document.getElementById("srvCode"), copy: document.getElementById("bSrvCopy")
 };
 async function srvFetch(path, opt){
-  const r = await fetch(path, opt);
+  const r = await fetch(srv.base + path, opt);
   const j = await r.json().catch(() => ({}));
   if(!r.ok) throw new Error(j.error || ("エラー " + r.status));
   return j;
@@ -923,13 +931,32 @@ function renderMyIds(){
     li.append(nm, b); srvEls.list.appendChild(li);
   });
 }
-async function srvInit(){
-  try{
-    await srvFetch("/api/ping"); srv.ok = true;
-    srvEls.state.className = "ok"; srvEls.state.textContent = "サーバーにつながっています";
-  }catch(e){
-    srv.ok = false; srvEls.state.className = "";
-    srvEls.state.textContent = "サーバーにつながっていません。server.py を起動して、そのアドレス (例: http://127.0.0.1:8080/) から開いてください。";
+const SRV_ADDR = "mbot2sim.srvaddr";
+const normAddr = s => String(s || "").trim().replace(/\/+$/, "");
+async function ping(base){
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 2500);
+  try{ const r = await fetch(base + "/api/ping", {signal: ac.signal}); const j = await r.json(); return r.ok && j.ok === true; }
+  catch(e){ return false; }
+  finally{ clearTimeout(timer); }
+}
+async function srvInit(userAddr){
+  let saved = ""; try{ saved = localStorage.getItem(SRV_ADDR) || ""; }catch(e){}
+  const addrEl = document.getElementById("srvAddr");
+  // つなぎ先の候補: (1) この画面を配っているサーバー (2) 入力・保存されたアドレス (3) このパソコンの既定のアドレス
+  const list = userAddr !== undefined ? [normAddr(userAddr)] : ["", normAddr(saved), "http://127.0.0.1:8080"];
+  srv.ok = false; srv.base = "";
+  for(const c of [...new Set(list)]){
+    if(c !== "" && !/^https?:\/\/[^\s/]+$/.test(c)) continue;
+    if(await ping(c)){ srv.ok = true; srv.base = c; break; }
+  }
+  if(srv.ok){
+    srvEls.state.className = "ok"; srvEls.state.textContent = "サーバーにつながっています" + (srv.base ? " (" + srv.base + ")" : "");
+    if(srv.base){ addrEl.value = srv.base; try{ localStorage.setItem(SRV_ADDR, srv.base); }catch(e){} }
+  }else{
+    srvEls.state.className = "";
+    srvEls.state.textContent = "サーバーにつながっていません。server.py を起動してください。公開ページから使うときは、下の「サーバーのアドレス」を確かめてください。";
+    document.getElementById("srvAddrBox").open = true;
+    if(!addrEl.value) addrEl.value = saved || "http://127.0.0.1:8080";
   }
   srvEls.save.disabled = srvEls.load.disabled = !srv.ok;
   renderMyIds();
@@ -970,6 +997,8 @@ srvEls.load.onclick = () => srvLoad(srvEls.loadCode.value);
 srvEls.loadCode.addEventListener("keydown", e => { if(e.key === "Enter") srvLoad(srvEls.loadCode.value); });
 srvEls.loadCode.addEventListener("input", () => { srvEls.loadCode.value = srvEls.loadCode.value.replace(/[^0-9]/g, "").slice(0, 6); });
 srvEls.copy.onclick = srvCopy;
+document.getElementById("bSrvAddr").onclick = () => srvInit(document.getElementById("srvAddr").value);
+document.getElementById("srvAddr").addEventListener("keydown", e => { if(e.key === "Enter") srvInit(e.target.value); });
 srvEls.save.disabled = srvEls.load.disabled = true;
 
 /* ----- スレッド管理 ----- */

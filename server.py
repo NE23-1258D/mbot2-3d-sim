@@ -8,6 +8,7 @@
     python server.py                       このパソコンの中だけで動かす (http://127.0.0.1:8080/)
     python server.py --host 0.0.0.0        校内の他のパソコンからもつなげる
     python server.py --db /var/lib/mbot2/programs.db --keep-days 180
+    python server.py --allow-origin https://ne23-1258d.github.io    公開ページからも、このサーバーを使えるようにする
 
 管理 (サーバーを止めずに、別のターミナルで実行できます):
     python server.py --admin-count         保存されている件数
@@ -41,7 +42,7 @@ FAIL_LIMIT, FAIL_WINDOW = 15, 60          # 1分間に15回まちがえたら、
 SAVE_LIMIT, SAVE_WINDOW = 20, 600         # 10分間に20回まで保存できる
 MAX_ITEMS = 20000                         # 保存できる最大件数
 
-CONFIG = {"db": os.path.join(BASE, "programs.db"), "keep_days": 180}
+CONFIG = {"db": os.path.join(BASE, "programs.db"), "keep_days": 180, "origins": set()}
 
 
 class Limiter:
@@ -113,13 +114,20 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
-        for k, v in (extra or {}).items():
+        for k, v in {**self._cors(), **(extra or {})}.items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
     def _error(self, code, message, extra=None):
         self._send(code, {"error": message}, extra=extra)
+
+    def _cors(self):
+        """--allow-origin で許可した画面 (例: GitHub Pages) からの接続にだけ、許可を返す"""
+        origin = self.headers.get("Origin")
+        if origin and origin in CONFIG["origins"]:
+            return {"Access-Control-Allow-Origin": origin, "Vary": "Origin"}
+        return {}
 
     def _ip(self):
         return self.client_address[0]
@@ -130,7 +138,7 @@ class Handler(BaseHTTPRequestHandler):
         if not origin:
             return True
         host = self.headers.get("Host", "")
-        return origin in ("http://" + host, "https://" + host)
+        return origin in ("http://" + host, "https://" + host) or origin in CONFIG["origins"]
 
     def _read_json(self):
         if "application/json" not in (self.headers.get("Content-Type") or ""):
@@ -152,6 +160,16 @@ class Handler(BaseHTTPRequestHandler):
             self._error(400, "JSON の形が正しくありません")
             return None
         return data
+
+    # ---- OPTIONS (ブラウザが、別のサイトから使ってよいか事前に確かめる) ----
+    def do_OPTIONS(self):
+        cors = self._cors()
+        if not cors:
+            return self._send(204)          # 許可しない画面には、許可の印を付けない (ブラウザが止める)
+        extra = {"Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "600"}
+        if self.headers.get("Access-Control-Request-Private-Network") == "true":
+            extra["Access-Control-Allow-Private-Network"] = "true"
+        self._send(204, extra=extra)
 
     # ---- GET ----
     def do_GET(self):
@@ -228,10 +246,13 @@ def main():
     ap.add_argument("--port", type=int, default=8080)
     ap.add_argument("--db", default=CONFIG["db"], help="SQLite のファイル")
     ap.add_argument("--keep-days", type=int, default=CONFIG["keep_days"], help="保存しておく日数 (0 で消さない)")
+    ap.add_argument("--allow-origin", action="append", default=[], metavar="URL",
+                    help="このサーバーを使ってよい画面のアドレス。例: https://ne23-1258d.github.io (何回でも指定できます)")
     ap.add_argument("--admin-count", action="store_true", help="保存されている件数を表示して終了")
     ap.add_argument("--admin-delete", metavar="ID", help="6桁の ID を指定して削除して終了")
     args = ap.parse_args()
     CONFIG["db"], CONFIG["keep_days"] = args.db, max(0, args.keep_days)
+    CONFIG["origins"] = {o.rstrip("/") for o in args.allow_origin}
     db_init()
 
     if args.admin_count:
@@ -250,6 +271,8 @@ def main():
     except OSError as e:
         raise SystemExit("起動できませんでした (%s)。すでに別の server.py が動いていないか、ポート %d が使われていないか確認してください。" % (e, args.port))
     print("保存サーバーを起動しました:  http://%s:%d/   (データ: %s)   止めるには Ctrl+C" % (args.host, args.port, CONFIG["db"]))
+    if CONFIG["origins"]:
+        print("次の画面からの接続を許可しています:", ", ".join(sorted(CONFIG["origins"])))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
