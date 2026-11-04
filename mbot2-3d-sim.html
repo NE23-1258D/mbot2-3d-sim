@@ -314,22 +314,49 @@ const robot = new THREE.Group();
 const MAT = (c, o) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.5, metalness:.15}, o||{}));
 function part(geo, mat, x, y, z){ const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; robot.add(m); return m; }
 const mid = (REAR - FRONT) / 2;                        // 車体の中心 (軸から見た前後の位置)
-part(new THREE.BoxGeometry(ROBOT.bodyW, 4, ROBOT.len), MAT(0x2b9fd8), 0, 3.4, mid);                 // 車体
-part(new THREE.BoxGeometry(ROBOT.bodyW + .6, .6, ROBOT.len - 3.5), MAT(0x16597a), 0, 5.7, mid);     // 上板
-part(new THREE.BoxGeometry(7.4, ROBOT.h - 6, 5.4), MAT(0x1a1f2b), 0, 6 + (ROBOT.h - 6) / 2, -1.5);  // CyberPi (上面が高さ 8.7cm)
-part(new THREE.BoxGeometry(5.4, .2, 3.2), MAT(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, ROBOT.h + .05, -1.5);
+const BLUE = MAT(0x2a8de6, {metalness:.55, roughness:.35});          // 青いアルミの車体
+const BLACK = MAT(0x15181f, {roughness:.55});
+const GLASS = new THREE.MeshPhysicalMaterial({color:0xd5dde8, transparent:true, opacity:.4, roughness:.12, metalness:0, clearcoat:1, clearcoatRoughness:.1});
+const CYAN = new THREE.MeshBasicMaterial({color:0x38e8ff});
+const topY = 4.9;                                                    // 車体の上面の高さ
+// 車体 (青いアルミ) と、前後の板
+part(new THREE.BoxGeometry(ROBOT.bodyW, 3.6, ROBOT.len - 1.5), BLUE, 0, topY - 1.8, mid);
+[-1, 1].forEach(s => {
+  part(new THREE.BoxGeometry(.3, 3.4, 4.5), BLUE, s*(ROBOT.bodyW/2 + .15), 3.7, -(FRONT - 3.2));      // 前の板
+  part(new THREE.BoxGeometry(.3, 5.8, 4), BLUE, s*(ROBOT.bodyW/2 + .15), 4.7, REAR - 2.6);             // 後ろの背の高い板
+});
+// 透明なカバーと、中の基板・画面・ジョイスティック (上面が高さ 8.7cm)
+part(new THREE.BoxGeometry(ROBOT.bodyW - .8, 3.3, 11.5), new THREE.MeshStandardMaterial({color:0x1a2230, roughness:.6}), 0, topY + .3, -1.2);   // 中の基板 (暗い箱)
+const cover = part(new THREE.BoxGeometry(ROBOT.bodyW - .4, ROBOT.h - topY, 11.8), GLASS, 0, (topY + ROBOT.h) / 2, -1.2); cover.castShadow = false;
+part(new THREE.BoxGeometry(2.8, .2, 1.8), MAT(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.9}), -1.2, ROBOT.h - .45, -3.4);                    // 画面
+part(new THREE.CylinderGeometry(.5, .5, .8, 14), MAT(0x4a5160), 2.9, ROBOT.h - .35, -3.0);                                                     // ジョイスティック
+// 前面の超音波センサー (目の中心の高さ 6.5cm)。目は、水色に光る輪つき
+part(new THREE.BoxGeometry(ROBOT.bodyW - .4, 3.4, 1.6), BLACK, 0, ROBOT.usH, -(FRONT - .8));
+const EYE_R = 1.0;                                                                                       // 写真から、目の半径を約 1cm とした
+[-1, 1].forEach(s => {
+  const eye = part(new THREE.CylinderGeometry(EYE_R, EYE_R, 1.0, 24), MAT(0x0c0e12, {roughness:.4}), s*2.2, ROBOT.usH, -FRONT + .1); eye.rotation.x = Math.PI/2;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(EYE_R - .12, .12, 10, 32), CYAN); ring.position.set(s*2.2, ROBOT.usH, -FRONT - .42); robot.add(ring);
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(EYE_R - .3, 20), MAT(0x6b7282, {roughness:.9})); mesh.position.set(s*2.2, ROBOT.usH, -FRONT - .45); mesh.rotation.y = Math.PI; robot.add(mesh);
+});
+// 前の底の、黒いクアッドRGBセンサーの基板 (前に少し出ている)。水色の光つき
+part(new THREE.BoxGeometry(ROBOT.bodyW - .8, .35, 2.6), BLACK, 0, 1.0, -9.6);
+[-3, -1, 1, 3].forEach(x => { const led = new THREE.Mesh(new THREE.BoxGeometry(.5, .12, .5), CYAN); led.position.set(x, 1.24, -10.4); robot.add(led); });
+// 車輪 (黒いタイヤと、穴の開いた面)
 const wheels = [-1, 1].map(s => {
-  const w = part(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, WHEEL_W, 28), MAT(0x15181f, {roughness:.8}), s*WHEEL_X, WHEEL_R, 0);
+  const w = part(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, WHEEL_W, 32), MAT(0x101216, {roughness:.85}), s*WHEEL_X, WHEEL_R, 0);
   w.rotation.z = Math.PI/2;
-  const hub = part(new THREE.CylinderGeometry(1.2, 1.2, WHEEL_W + .2, 16), MAT(0xc9d2e3), s*WHEEL_X, WHEEL_R, 0);
-  hub.rotation.z = Math.PI/2; return w;
+  const face = part(new THREE.CylinderGeometry(WHEEL_R * .8, WHEEL_R * .8, WHEEL_W + .05, 32), MAT(0x23272f, {roughness:.7}), s*WHEEL_X, WHEEL_R, 0);
+  face.rotation.z = Math.PI/2;
+  const hubX = s*(WHEEL_X + WHEEL_W/2 + .04);
+  [[1.1, 6], [1.9, 10]].forEach(([r, n]) => { for(let i = 0; i < n; i++){                                  // 穴を、2 重の輪に並べる
+    const ang = i / n * Math.PI * 2 + (r > 1.5 ? .15 : 0);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(.28, 10), new THREE.MeshBasicMaterial({color:0x040506}));
+    hole.position.set(hubX, WHEEL_R + Math.cos(ang) * r, Math.sin(ang) * r); hole.rotation.y = s * Math.PI / 2; robot.add(hole);
+  }});
+  return w;
 });
 part(new THREE.SphereGeometry(1, 16, 12), MAT(0xf0f0f0), 0, 1, REAR - 1.5);                          // キャスター
-part(new THREE.BoxGeometry(7.6, .6, 1.6), MAT(0x2a3040), 0, 1.7, -(FRONT - .8));                      // クアッドRGBセンサー
-part(new THREE.ConeGeometry(1.4, 3, 4), MAT(0xffffff), 0, 6.6, -6.5).rotation.x = -Math.PI/2;       // 前向きの目印
-// 超音波センサー (前面。目の中心の高さ 6.5cm、半径 0.5cm)
-part(new THREE.BoxGeometry(8, 2.6, 1), MAT(0x2a3040), 0, ROBOT.usH, -(FRONT - .5));
-[-1, 1].forEach(s => { const e = part(new THREE.CylinderGeometry(ROBOT.usR, ROBOT.usR, 1.2, 20), MAT(0xdfe6f2, {metalness:.5}), s*2, ROBOT.usH, -FRONT + .1); e.rotation.x = Math.PI/2; });
+part(new THREE.ConeGeometry(1.1, 2.4, 4), MAT(0xffffff), 0, topY + .2, -6.2).rotation.x = -Math.PI/2;   // 前向きの目印 (カバーの中)
 scene.add(robot);
 
 const sensMats = [], sensMeshes = SENS_OFF.map(() => {
