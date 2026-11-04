@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>画面の改善案 (プロトタイプ)</title>
+<style>
+  :root{
+    --bg:#0e131c; --card:#161d2b; --line:#2c3852; --text:#e8edf7; --muted:#98a5c0;
+    --blocks:#ffab19; --stage:#3aa6ff; --panel:#7c8aa8; --ok:#39e07a; --accent:#3aa6ff;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#eef2f8; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --panel:#7a879f; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+  main{max-width:1280px;margin:0 auto;padding:28px 20px 56px}
+  h1{font-size:24px;margin:0 0 6px}
+  .lead{color:var(--muted);margin:0 0 24px;line-height:1.7;max-width:60em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .card h2{font-size:17px;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--ok);color:#04121f}
+  .tag.now{background:var(--panel);color:#fff}
+  .sub{font-size:13px;color:var(--muted);margin:0 0 12px}
+
+  /* ---- ワイヤーフレーム ---- */
+  .wf{aspect-ratio:16/10;border:2px solid var(--line);border-radius:10px;padding:6px;display:grid;gap:6px;background:rgba(127,140,170,.08);font-size:11px;line-height:1.35}
+  .b{border-radius:7px;padding:6px 7px;display:flex;flex-direction:column;gap:3px;border:1.5px solid;min-width:0;min-height:0;overflow:hidden}
+  .b strong{font-size:12px}
+  .b small{opacity:.85}
+  .blocks{border-color:var(--blocks);background:rgba(255,171,25,.14)}
+  .stage{border-color:var(--stage);background:rgba(58,166,255,.14)}
+  .panel{border-color:var(--panel);background:rgba(124,138,168,.16)}
+  .bar{border-color:var(--ok);background:rgba(57,224,122,.13);flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}
+  .pill{border:1px solid currentColor;border-radius:6px;padding:1px 6px;font-size:10px;white-space:nowrap}
+  .mini{border-color:var(--stage);background:rgba(58,166,255,.22);position:relative}
+  .blk{height:9px;border-radius:3px;background:var(--blocks);opacity:.9}
+  .blk.b2{background:#05A6FF}.blk.b3{background:#0AAD80}
+  .stack{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+
+  /* 現在 */
+  .wf.now{grid-template-columns:22% 1fr;grid-template-rows:1fr 1fr}
+  .wf.now .panel{grid-row:1/3}
+  /* 案A */
+  .wf.a{grid-template-columns:62% 1fr;grid-template-rows:auto 1.5fr 1fr}
+  .wf.a .bar{grid-column:1/3}
+  .wf.a .blocks{grid-row:2/4}
+  /* 案B */
+  .wf.b{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto}
+  .wf.b .bar{grid-column:1/3}
+  /* 案C */
+  .wf.c{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .wf.c .blocks{position:relative}
+  .wf.c .mini{position:absolute;right:8px;bottom:8px;width:34%;height:42%}
+
+  ul.pts{margin:12px 0 0;padding-left:1.2em;font-size:13px;line-height:1.7}
+  ul.pts li{margin:2px 0}
+  .pros{color:var(--ok);font-weight:700}
+  .cons{color:#ff8a5e;font-weight:700}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .section{margin-top:28px}
+  .section h2{font-size:18px;margin:0 0 4px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 14px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1.5px solid}
+</style>
+</head>
+<body>
+<main>
+  <h1>画面の改善案 (プロトタイプ)</h1>
+  <p class="lead">いまの画面は、ブロックを組み立てる場所が、右下の 1/4 ほどしかなく、ブロックも小さく表示されます。「プログラムの各部分を大きく」するために、画面の割り当てを変える 3 つの案を、図にしました。どの案も、中身 (機能) は、同じです。</p>
+
+  <div class="legend" aria-label="凡例">
+    <span><i style="border-color:var(--blocks);background:rgba(255,171,25,.2)"></i>ブロックを組み立てる場所</span>
+    <span><i style="border-color:var(--stage);background:rgba(58,166,255,.2)"></i>3D の画面</span>
+    <span><i style="border-color:var(--panel);background:rgba(124,138,168,.2)"></i>操作・情報のパネル</span>
+    <span><i style="border-color:var(--ok);background:rgba(57,224,122,.2)"></i>上のバー (主な操作)</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- 現在 -->
+    <section class="card" aria-labelledby="h-now">
+      <h2 id="h-now"><span class="tag now">現在</span>いまの画面</h2>
+      <p class="sub">左に細長いパネル、右に 3D とブロックが半分ずつ</p>
+      <div class="wf now" role="img" aria-label="現在の画面の配置図。左に細長いパネル、右上に3D、右下にブロック">
+        <div class="b panel"><strong>操作パネル</strong><small>実行・サンプル・課題・視点・センサー・保存… (縦に長い)</small></div>
+        <div class="b stage"><strong>3D の画面</strong></div>
+        <div class="b blocks"><strong>ブロック</strong><div class="stack"><div class="blk"></div><div class="blk b2" style="width:80%"></div><div class="blk b3" style="width:65%"></div></div><small>全体の約 1/3</small></div>
+      </div>
+      <ul class="pts">
+        <li><span class="cons">困る点</span>: ブロックの場所が狭く、横にも縦にも、すぐはみ出します。</li>
+        <li><span class="cons">困る点</span>: 実行などの主な操作が、パネルの中に、埋もれています。</li>
+      </ul>
+    </section>
+
+    <!-- 案A -->
+    <section class="card" aria-labelledby="h-a">
+      <h2 id="h-a"><span class="tag">おすすめ</span>案 A: ブロック最優先</h2>
+      <p class="sub">ブロックを、画面の左 6 割、縦いっぱいに</p>
+      <div class="wf a" role="img" aria-label="案Aの配置図。上にバー、左に大きなブロック、右上に3D、右下に情報">
+        <div class="b bar"><span class="pill">▶ 実行</span><span class="pill">■ 停止</span><span class="pill">↺ 位置を戻す</span><span class="pill">サンプル ▾</span><span class="pill">ID 保存</span><span class="pill">mBlock へ</span></div>
+        <div class="b blocks"><strong>ブロック (大きく)</strong><div class="stack"><div class="blk" style="height:13px"></div><div class="blk b2" style="height:13px;width:85%"></div><div class="blk b3" style="height:13px;width:70%"></div><div class="blk" style="height:13px;width:55%"></div></div><small>縦いっぱい / 倍率 1.0</small></div>
+        <div class="b stage"><strong>3D の画面</strong></div>
+        <div class="b panel"><strong>課題 ・ センサー</strong><small>緑→青→赤→黄 / L2 L1 R1 R2</small></div>
+      </div>
+      <ul class="pts">
+        <li><span class="pros">良い点</span>: ブロックの場所が、いまの約 2 倍 (縦は約 2 倍) になります。</li>
+        <li><span class="pros">良い点</span>: 主な操作が、いつも上に見えます。</li>
+        <li><span class="cons">注意</span>: 3D の画面は、少し小さくなります (拡大ボタンで、全画面にできます)。</li>
+      </ul>
+    </section>
+
+    <!-- 案B -->
+    <section class="card" aria-labelledby="h-b">
+      <h2 id="h-b"><span class="tag" style="background:var(--stage)">案 B</span>左右 1:1 (見比べ重視)</h2>
+      <p class="sub">ブロックと 3D を、同じ大きさで、並べる</p>
+      <div class="wf b" role="img" aria-label="案Bの配置図。上にバー、左にブロック、右に3D、下に情報バー">
+        <div class="b bar"><span class="pill">▶ 実行</span><span class="pill">■ 停止</span><span class="pill">↺ 位置を戻す</span><span class="pill">サンプル ▾</span><span class="pill">ID 保存</span><span class="pill">mBlock へ</span></div>
+        <div class="b blocks"><strong>ブロック</strong><div class="stack"><div class="blk" style="height:12px"></div><div class="blk b2" style="height:12px;width:82%"></div><div class="blk b3" style="height:12px;width:66%"></div></div><small>幅 50% / 倍率 0.9</small></div>
+        <div class="b stage"><strong>3D の画面</strong><small>動きを見ながら、ブロックを直せる</small></div>
+        <div class="b panel" style="grid-column:1/3;flex-direction:row;gap:10px;align-items:center"><strong>課題</strong><small>緑 → 青 → 赤 → 黄 / タイム / センサー L2 L1 R1 R2 / 視点の切り替え</small></div>
+      </div>
+      <ul class="pts">
+        <li><span class="pros">良い点</span>: ブロックを直して、すぐ動きを見られます。両方が、同じ大きさで、見やすいです。</li>
+        <li><span class="cons">注意</span>: ブロックが、案 A ほど大きくなりません (いまの約 1.5 倍)。</li>
+      </ul>
+    </section>
+
+    <!-- 案C -->
+    <section class="card" aria-labelledby="h-c">
+      <h2 id="h-c"><span class="tag" style="background:#ffab19">案 C</span>ブロック全画面 + 3D の小窓</h2>
+      <p class="sub">組み立てる間は、ブロックが全画面。3D は右下の小窓</p>
+      <div class="wf c" role="img" aria-label="案Cの配置図。上にバー、画面いっぱいにブロック、右下に3Dの小窓">
+        <div class="b bar"><span class="pill">▶ 実行</span><span class="pill">■ 停止</span><span class="pill">↺ 位置を戻す</span><span class="pill">サンプル ▾</span><span class="pill">ID 保存</span><span class="pill">mBlock へ</span><span class="pill">3D を大きく ⤢</span></div>
+        <div class="b blocks"><strong>ブロック (全画面)</strong><div class="stack"><div class="blk" style="height:14px;width:60%"></div><div class="blk b2" style="height:14px;width:50%"></div><div class="blk b3" style="height:14px;width:40%"></div><div class="blk" style="height:14px;width:55%"></div></div>
+          <div class="b mini"><strong>3D (小窓)</strong><small>ドラッグで移動</small></div>
+        </div>
+      </div>
+      <ul class="pts">
+        <li><span class="pros">良い点</span>: ブロックが、一番大きくなります。長いプログラムでも、見渡せます。</li>
+        <li><span class="cons">注意</span>: 3D は小さいので、動きをじっくり見るときは、「3D を大きく」で、切り替えます。課題・センサーの表示は、折りたたみ (または小窓) になります。</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="section card" aria-labelledby="h-size">
+    <h2 id="h-size">どれも共通して、大きくする部分</h2>
+    <table>
+      <thead><tr><th>部分</th><th>いま</th><th>案 (目安)</th></tr></thead>
+      <tbody>
+        <tr><td>ブロックの表示倍率</td><td>0.675 倍</td><td>1.0 倍 (画面の「＋ ／ －」と、倍率スライダーで、変えられる)</td></tr>
+        <tr><td>ブロックの置き場の幅</td><td>画面の約 1/3</td><td>案 A: 約 6 割 / 案 B: 約 1/2 / 案 C: 全画面</td></tr>
+        <tr><td>ボタンの大きさ</td><td>高さ 46px、文字 14px</td><td>高さ 52px、文字 16px (上のバーに、まとめる)</td></tr>
+        <tr><td>パレット (ブロックの一覧) の文字</td><td>小さい</td><td>文字と余白を、約 1.3 倍に</td></tr>
+        <tr><td>実行・停止</td><td>パネルの中</td><td>上のバーに常に表示。「▶ 実行」は、大きな緑のボタン</td></tr>
+        <tr><td>課題・センサーの表示</td><td>パネルに、小さく</td><td>文字を大きくして、右 (または下) にまとめる</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section card" aria-labelledby="h-next">
+    <h2 id="h-next">次に決めたいこと</h2>
+    <ul class="pts">
+      <li>案 A / B / C の、どれを、試作 (動く画面) にしますか。</li>
+      <li>使う画面の大きさ (ノートパソコン、教室のモニター、タブレットなど) を、教えてください。小さい画面では、案 C のほうが、使いやすくなります。</li>
+      <li>「ここだけ、特に大きくしたい」部分 (例: ブロックの文字、3D、課題のタイム表示) はありますか。</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

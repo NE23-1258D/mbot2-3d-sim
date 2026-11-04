@@ -15,19 +15,26 @@
   :root[data-theme="light"]{ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;overflow:hidden}
-  body{display:grid;grid-template-columns:320px minmax(0,1fr);grid-template-rows:50% 50%;grid-template-areas:"panel stage" "panel blocks"}
-  #panel{grid-area:panel;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:12px}
+  body{display:grid;grid-template-columns:62% 38%;grid-template-rows:auto minmax(0,1.25fr) minmax(0,1fr);grid-template-areas:"bar bar" "blocks stage" "blocks panel";font-size:16px}
+  #bar{grid-area:bar;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+  #bar .ttl{font-weight:700;font-size:15px;color:var(--muted);margin-left:auto;white-space:nowrap}
+  #bar button,#bar select{flex:none;min-height:52px;font-size:16px;padding:8px 16px}
+  #bar select{min-width:0;max-width:220px}
+  #bar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
+  #bar #bRun{background:#2fbf6a;border-color:#2fbf6a;color:#04121f;font-weight:700;font-size:19px;min-width:150px}
+  #bar #bRun:hover{filter:brightness(1.08)}
+  #panel{grid-area:panel;background:var(--panel);border-top:1px solid var(--line);overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px}
   #stage{grid-area:stage;position:relative;min-width:0;min-height:0}
-  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-top:1px solid #d9e3f2;background:#fff}
+  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-right:1px solid var(--line);background:#fff}
   #blockly{position:absolute;inset:0}
   canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
   h1{font-size:17px;margin:0}
   .sub{font-size:12px;color:var(--muted);margin:2px 0 0;line-height:1.5}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-  .card h2{font-size:12px;margin:0 0 9px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:600;letter-spacing:.04em}
   .row{display:flex;gap:8px}
   .row + .row{margin-top:8px}
-  button,select{font:inherit;font-size:14px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:10px;padding:9px 8px;min-height:46px}
+  button,select{font:inherit;font-size:16px;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:10px;padding:10px 10px;min-height:52px}
   button{flex:1;cursor:pointer}
   select{flex:1;min-width:0;background:var(--card)}
   button:hover{border-color:var(--accent)}
@@ -35,21 +42,21 @@
   button.stop{border-color:var(--warn);color:var(--warn)}
   button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .chips{display:flex;gap:8px;margin-bottom:8px}
-  .chip{flex:1;text-align:center;font-size:15px;padding:9px 0;border-radius:10px;border:2px solid var(--line);color:var(--muted)}
+  .chip{flex:1;text-align:center;font-size:19px;padding:12px 0;border-radius:10px;border:2px solid var(--line);color:var(--muted)}
   .chip.next{color:var(--text);font-weight:700}
   .chip.done{color:#04121f;font-weight:700}
   .chip.done::after{content:" ✓"}
-  #mInfo{font-size:13px;color:var(--muted);margin:0;min-height:1.4em}
+  #mInfo{font-size:16px;color:var(--muted);margin:0;min-height:1.4em}
   #mInfo.clear{color:var(--on);font-weight:700}
   .sens{display:flex;gap:8px}
-  .sens div{flex:1;text-align:center;font-size:12px;color:var(--muted)}
-  .sens i{display:block;height:24px;border-radius:7px;background:var(--off);margin-bottom:4px}
+  .sens div{flex:1;text-align:center;font-size:14px;color:var(--muted)}
+  .sens i{display:block;height:32px;border-radius:7px;background:var(--off);margin-bottom:4px}
   .sens i.on{background:var(--on)}
-  .kv{display:flex;justify-content:space-between;font-size:13px;margin-top:10px;font-variant-numeric:tabular-nums}
+  .kv{display:flex;justify-content:space-between;font-size:16px;margin-top:10px;font-variant-numeric:tabular-nums}
   .kv span{color:var(--muted)}
-  .help{font-size:12px;color:var(--muted);line-height:1.7;margin:0}
+  .help{font-size:13px;color:var(--muted);line-height:1.7;margin:0}
   kbd{font:inherit;font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
-  input[type=text]{flex:1;min-width:0;font:inherit;font-size:14px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:46px}
+  input[type=text]{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:52px}
   input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .plist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
   .plist li{display:flex;align-items:center;gap:6px;font-size:13px}
@@ -63,7 +70,7 @@
   .idnote{font-size:12px;color:var(--muted);line-height:1.6;margin:8px 0 0}
   .plist .code{font-variant-numeric:tabular-nums;letter-spacing:.08em;font-weight:600}
   #hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
-  #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:7px 11px;font-size:14px;font-variant-numeric:tabular-nums}
+  #hud span{background:rgba(14,19,28,.78);color:#e8edf7;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 14px;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
   #pad{position:absolute;right:14px;bottom:14px;display:none;gap:8px;align-items:flex-end}
   #pad.show{display:flex}
   #pad button,#btns button{flex:none;width:56px;min-height:56px;font-size:22px;background:rgba(14,19,28,.8);color:#e8edf7;border-color:rgba(255,255,255,.2);touch-action:none;user-select:none}
@@ -74,47 +81,63 @@
   #msg.show{display:block}
   /* mBlock と同じ見た目になるよう、パレットの幅などを合わせる */
   .scratchCategoryMenuItemLabel{font-family:"Helvetica Neue",Helvetica,sans-serif}
+  /* 実行中のブロックの色付け (ブロックの発光は scratch-blocks が付けます)。条件の結果は、枠の色で見せます */
+  .sim-run > g:first-child > path.blocklyBlockBackground{stroke:#ffe600 !important;stroke-width:5px !important;filter:drop-shadow(0 0 7px rgba(255,230,0,.95))}
+  .sim-true > g:first-child > path.blocklyBlockBackground{stroke:#1fd16a !important;stroke-width:5px !important;filter:drop-shadow(0 0 7px rgba(31,209,106,.95))}
+  .sim-false > g:first-child > path.blocklyBlockBackground{stroke:#ff4d4d !important;stroke-width:5px !important;filter:drop-shadow(0 0 7px rgba(255,77,77,.95))}
   @media (max-width:900px){
-    body{grid-template-columns:100%;grid-template-rows:32% 40% 28%;grid-template-areas:"stage" "blocks" "panel"}
-    #panel{border-right:0;border-top:1px solid var(--line)}
+    body{grid-template-columns:100%;grid-template-rows:auto 30% 40% minmax(0,1fr);grid-template-areas:"bar" "stage" "blocks" "panel"}
+    #blocks{border-right:0}
+    #bar{gap:8px;padding:8px 10px}
+    #bar button,#bar select{min-height:46px;font-size:15px;padding:6px 12px}
+    #bar .ttl{display:none}
   }
 </style>
 </head>
 <body>
 
-<aside id="panel" aria-label="操作パネル">
-  <div>
-    <h1>mBot2 3Dシミュレーター</h1>
-    <p class="sub">mBlock と同じブロックを組み立てて、実機での動きを確認します。コースは 2m × 2m です。</p>
-  </div>
+<header id="bar" role="toolbar" aria-label="主な操作">
+  <button id="bRun" type="button" class="primary">▶ 実行</button>
+  <button id="bStop" type="button" class="stop">■ 停止</button>
+  <button id="bReset" type="button">↺ 位置を戻す</button>
+  <button id="bManual" type="button">手動操作</button>
+  <span class="sep" aria-hidden="true"></span>
+  <select id="sample" aria-label="サンプルを選ぶ">
+    <option value="line">サンプル: 線をたどる</option>
+    <option value="mission">サンプル: 色マスを順に踏む</option>
+    <option value="blank">サンプル: 空にする</option>
+  </select>
+  <button id="bLoad" type="button">読み込む</button>
+  <select id="startPose" aria-label="スタート位置">
+    <option value="line">スタート: 線の上</option>
+    <option value="center">スタート: 中央</option>
+  </select>
+  <span class="ttl">mBot2 3Dシミュレーター (コース 2m × 2m)</span>
+</header>
 
-  <section class="card" aria-label="実行">
-    <h2>実行</h2>
-    <div class="row">
-      <button id="bRun" type="button" class="primary">▶ 実行 (旗)</button>
-      <button id="bStop" type="button" class="stop">■ 停止</button>
-    </div>
-    <div class="row">
-      <button id="bManual" type="button">手動操作</button>
-      <button id="bReset" type="button">位置を戻す</button>
-    </div>
-    <div class="row">
-      <select id="startPose" aria-label="スタート位置">
-        <option value="line">スタート位置: 線の上</option>
-        <option value="center">スタート位置: 中央</option>
-      </select>
-    </div>
+<aside id="panel" aria-label="情報パネル">
+  <section class="card" aria-label="課題">
+    <h2>課題: 色マスを順に踏もう</h2>
+    <div class="chips" id="chips" aria-label="踏む順番"></div>
+    <p id="mInfo">緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます</p>
   </section>
 
-  <section class="card" aria-label="サンプル">
-    <h2>サンプルのブロック</h2>
+  <section class="card" aria-label="センサーとモーター">
+    <h2>クアッドRGBセンサー (線=点灯)</h2>
+    <div class="sens">
+      <div><i id="sL2"></i>L2</div><div><i id="sL1"></i>L1</div><div><i id="sR1"></i>R1</div><div><i id="sR2"></i>R2</div>
+    </div>
+    <div class="kv"><span>偏差 (-100〜100)</span><b id="kOff">-</b></div>
+    <div class="kv"><span>左(EM1) / 右(EM2)</span><b id="kWheel">0 / 0 rpm</b></div>
+    <div class="kv"><span>走った距離</span><b id="kOdo">0 cm</b></div>
+  </section>
+
+  <section class="card" aria-label="視点">
+    <h2>視点</h2>
     <div class="row">
-      <select id="sample" aria-label="サンプルを選ぶ">
-        <option value="line">線をたどる</option>
-        <option value="mission">色マスを順に踏む</option>
-        <option value="blank">空にする</option>
-      </select>
-      <button id="bLoad" type="button" style="flex:none;width:92px">読み込む</button>
+      <button id="vOrbit" type="button" class="active">斜め</button>
+      <button id="vFollow" type="button">追従</button>
+      <button id="vTop" type="button">真上</button>
     </div>
   </section>
 
@@ -148,31 +171,6 @@
     <h2>mBlock へ</h2>
     <div class="row"><button id="bExport" type="button">mBlock 用に書き出す (.sb3)</button></div>
     <p class="help" style="margin-top:8px">書き出したファイルを、mBlock の「ファイル → コンピューターから開く」で開くと、同じブロックが mBot2 のデバイスに並びます。</p>
-  </section>
-
-  <section class="card" aria-label="課題">
-    <h2>課題: 色マスを順に踏もう</h2>
-    <div class="chips" id="chips" aria-label="踏む順番"></div>
-    <p id="mInfo">緑 → 青 → 赤 → 黄 の順に、車体の中心で踏みます</p>
-  </section>
-
-  <section class="card" aria-label="視点">
-    <h2>視点</h2>
-    <div class="row">
-      <button id="vOrbit" type="button" class="active">斜め</button>
-      <button id="vFollow" type="button">追従</button>
-      <button id="vTop" type="button">真上</button>
-    </div>
-  </section>
-
-  <section class="card" aria-label="センサーとモーター">
-    <h2>クアッドRGBセンサー (線=点灯)</h2>
-    <div class="sens">
-      <div><i id="sL2"></i>L2</div><div><i id="sL1"></i>L1</div><div><i id="sR1"></i>R1</div><div><i id="sR2"></i>R2</div>
-    </div>
-    <div class="kv"><span>偏差 (-100〜100)</span><b id="kOff">-</b></div>
-    <div class="kv"><span>左(EM1) / 右(EM2)</span><b id="kWheel">0 / 0 rpm</b></div>
-    <div class="kv"><span>走った距離</span><b id="kOdo">0 cm</b></div>
   </section>
 
   <p class="help">
@@ -567,7 +565,7 @@ if(blocklyOK){
   try{
     ws = Blockly.inject("blockly", {
       toolbox: TOOLBOX, media: MEDIA, sounds: false, scrollbars: true, trashcan: true, readOnly: false,
-      zoom: {controls: true, wheel: true, startScale: 0.675, maxScale: 4, minScale: 0.25, scaleSpeed: 1.2},
+      zoom: {controls: true, wheel: true, startScale: 1.0, maxScale: 4, minScale: 0.25, scaleSpeed: 1.2},
       grid: {spacing: 40, length: 2, colour: "#ddd", snap: false},
       colours: {workspace: "#FFFFFF", flyout: "#FFFFFF", toolbox: "#FFFFFF", toolboxHover: "#4C97FF", toolboxSelected: "#E9EEF2",
         scrollbar: "#CECDCE", scrollbarHover: "#CECDCE", insertionMarker: "#000000", insertionMarkerOpacity: .2,
@@ -711,17 +709,68 @@ async function loopBody(sub, c){                // "break" / "continue" / "stop"
   if(r === "stop") return "stop";
   return null;
 }
+/* ----- 実行中のブロックの色付け -----
+   いま動いているブロックを光らせます。一瞬で終わるブロックも、見えるように、少しの間 (0.14秒) 光らせます。
+   「もし」などの条件は、結果が「はい」なら緑、「いいえ」なら赤の枠で、少しの間 (0.3秒) 見せます。 */
+const GLOW_MIN = 140, COND_MS = 300;
+const glowMap = new Map(), condMap = new Map();
+function setRun(id, on){
+  const b = ws && ws.getBlockById(id);
+  if(b && b.svgGroup_) b.svgGroup_.classList.toggle("sim-run", on);
+}
+function glowStart(id){
+  if(!ws || !id) return;
+  const g = glowMap.get(id) || {n:0, until:0};
+  if(g.n === 0) setRun(id, true);
+  g.n++; g.until = Infinity; glowMap.set(id, g);
+}
+function glowEnd(id){
+  const g = glowMap.get(id); if(!g) return;
+  g.n = Math.max(0, g.n - 1);
+  if(g.n === 0) g.until = performance.now() + GLOW_MIN;
+}
+function markCond(id, ok){
+  if(!ws || !id) return;
+  const b = ws.getBlockById(id); if(!b || !b.svgGroup_) return;
+  b.svgGroup_.classList.remove("sim-true", "sim-false");
+  b.svgGroup_.classList.add(ok ? "sim-true" : "sim-false");
+  condMap.set(id, performance.now() + COND_MS);
+}
+function glowClear(){
+  if(ws){
+    for(const id of glowMap.keys()) setRun(id, false);
+    for(const id of condMap.keys()){ const b = ws.getBlockById(id); if(b && b.svgGroup_) b.svgGroup_.classList.remove("sim-true", "sim-false"); }
+  }
+  glowMap.clear(); condMap.clear();
+}
+setInterval(() => {
+  if(!ws) return;
+  const now = performance.now();
+  for(const [id, g] of glowMap) if(g.n === 0 && now >= g.until){ setRun(id, false); glowMap.delete(id); }
+  for(const [id, until] of condMap) if(now >= until){ const b = ws.getBlockById(id); if(b && b.svgGroup_) b.svgGroup_.classList.remove("sim-true", "sim-false"); condMap.delete(id); }
+}, 60);
+function evalCond(e){                          // 条件を調べ、結果を枠の色で見せる
+  const c = el.input(e, "CONDITION"), v = toBool(ev(c));
+  if(c && c.tagName.toLowerCase() === "block") markCond(c.getAttribute("id"), v);
+  return v;
+}
 async function runBlock(e, c){
+  const id = e.getAttribute("id");
+  glowStart(id);
+  try{ return await runBlockInner(e, c); }
+  finally{ glowEnd(id); }
+}
+async function runBlockInner(e, c){
   const t = e.getAttribute("type"), I = n => ev(el.input(e, n)), F = n => el.field(e, n), S1 = n => el.stack(e, n);
   switch(t){
     case "control_wait": await R.wait(toNum(I("DURATION"))); if(c.ep !== epoch) throw STOP; return null;
     case "control_repeat": { const n = Math.floor(toNum(I("TIMES"))); for(let i = 0; i < n; i++){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null; }
     case "control_forever": while(true){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
-    case "control_repeat_until": while(!toBool(I("CONDITION"))){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
-    case "control_if_repeat_new": while(toBool(I("CONDITION"))){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
-    case "control_wait_until": while(!toBool(I("CONDITION"))) await tick(c); return null;
-    case "control_if": return toBool(I("CONDITION")) ? await runStack(S1("SUBSTACK"), c) : null;
-    case "control_if_else": return toBool(I("CONDITION")) ? await runStack(S1("SUBSTACK"), c) : await runStack(S1("SUBSTACK2"), c);
+    case "control_repeat_until": while(!evalCond(e)){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
+    case "control_if_repeat_new": while(evalCond(e)){ const r = await loopBody(S1("SUBSTACK"), c); if(r === "break") break; if(r === "stop") return "stop"; await tick(c); } return null;
+    case "control_wait_until": while(!evalCond(e)) await tick(c); return null;
+    case "control_if": return evalCond(e) ? await runStack(S1("SUBSTACK"), c) : null;
+    case "control_if_else": return evalCond(e) ? await runStack(S1("SUBSTACK"), c) : await runStack(S1("SUBSTACK2"), c);
     case "control_break_new": return "break";
     case "control_continue_new": return "continue";
     case "control_stop": if(F("STOP_OPTION") === "all"){ stopAll(); throw STOP; } return F("STOP_OPTION") === "this script" ? "stop" : null;
@@ -1019,7 +1068,7 @@ function startThread(hat){
     setStatus();
   });
 }
-function stopAll(){ epoch++; waiters.forEach(f => f()); waiters = []; R.stopMotors(); }
+function stopAll(){ epoch++; waiters.forEach(f => f()); waiters = []; R.stopMotors(); glowClear(); }
 function runProgram(){
   if(!ws){ toast("ブロックエディターを読み込めませんでした (インターネット接続を確認してください)"); return; }
   stopAll(); alive.clear(); threadCount = 0;
