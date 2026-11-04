@@ -15,7 +15,18 @@
   :root[data-theme="light"]{ --bg:#dfe6f1; --panel:#f4f7fc; --card:#ffffff; --line:#c8d2e4; --text:#17202f; --muted:#56637d; --off:#c3cbd9; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;overflow:hidden}
-  body{display:grid;grid-template-columns:62% 38%;grid-template-rows:auto minmax(0,1.25fr) minmax(0,1fr);grid-template-areas:"bar bar" "blocks stage" "blocks panel";font-size:16px}
+  body{--leftW:62vw;--stageH:45vh;display:grid;grid-template-columns:var(--leftW) 10px minmax(0,1fr);grid-template-rows:auto var(--stageH) 10px minmax(0,1fr);
+    grid-template-areas:"bar bar bar" "blocks splitv stage" "blocks splitv splith" "blocks splitv panel";font-size:16px}
+  .split{position:relative;background:var(--line);touch-action:none;z-index:5;transition:background .12s}
+  .split::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:3px;background:var(--muted);opacity:.8}
+  #splitV{grid-area:splitv;cursor:col-resize}
+  #splitV::after{width:4px;height:44px}
+  #splitH{grid-area:splith;cursor:row-resize}
+  #splitH::after{width:44px;height:4px}
+  .split:hover,.split:focus-visible,.split.drag{background:var(--accent);outline:none}
+  .split:hover::after,.split:focus-visible::after,.split.drag::after{background:#fff;opacity:1}
+  body.dragging{user-select:none;-webkit-user-select:none}
+  body.dragging canvas,body.dragging #blockly{pointer-events:none}
   #bar{grid-area:bar;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
   #bar .ttl{font-weight:700;font-size:15px;color:var(--muted);margin-left:auto;white-space:nowrap}
   #bar button,#bar select{flex:none;min-height:52px;font-size:16px;padding:8px 16px}
@@ -23,9 +34,9 @@
   #bar .sep{width:1px;align-self:stretch;background:var(--line);margin:4px 2px}
   #bar #bRun{background:#2fbf6a;border-color:#2fbf6a;color:#04121f;font-weight:700;font-size:19px;min-width:150px}
   #bar #bRun:hover{filter:brightness(1.08)}
-  #panel{grid-area:panel;background:var(--panel);border-top:1px solid var(--line);overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px}
+  #panel{grid-area:panel;background:var(--panel);overflow-y:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:14px}
   #stage{grid-area:stage;position:relative;min-width:0;min-height:0}
-  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;border-right:1px solid var(--line);background:#fff}
+  #blocks{grid-area:blocks;position:relative;min-width:0;min-height:0;background:#fff}
   #blockly{position:absolute;inset:0}
   canvas#c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
   h1{font-size:17px;margin:0}
@@ -87,6 +98,7 @@
   .sim-false > g:first-child > path.blocklyBlockBackground{stroke:#ff4d4d !important;stroke-width:5px !important;filter:drop-shadow(0 0 7px rgba(255,77,77,.95))}
   @media (max-width:900px){
     body{grid-template-columns:100%;grid-template-rows:auto 30% 40% minmax(0,1fr);grid-template-areas:"bar" "stage" "blocks" "panel"}
+    .split{display:none}                      /* 狭い画面 (縦に並べる配置) では、大きさは固定です */
     #blocks{border-right:0}
     #bar{gap:8px;padding:8px 10px}
     #bar button,#bar select{min-height:46px;font-size:15px;padding:6px 12px}
@@ -180,6 +192,9 @@
     手動: <kbd>↑</kbd> 前進 / <kbd>←</kbd><kbd>→</kbd> 旋回 / 視点: ドラッグで回転、ホイールで拡大縮小
   </p>
 </aside>
+
+<div class="split" id="splitV" role="separator" aria-orientation="vertical" tabindex="0" aria-label="ブロックと右側の境目 (ドラッグか、左右の矢印キーで大きさを変えられます。ダブルクリックで元に戻ります)" title="ドラッグで大きさを変える / ダブルクリックで元に戻す"></div>
+<div class="split" id="splitH" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="3D の画面と課題の境目 (ドラッグか、上下の矢印キーで大きさを変えられます。ダブルクリックで元に戻ります)" title="ドラッグで大きさを変える / ダブルクリックで元に戻す"></div>
 
 <main id="stage">
   <canvas id="c" aria-label="mBot2 の3Dシミュレーション"></canvas>
@@ -1217,6 +1232,52 @@ if(ws){
   if(!loaded) loadSample("line");
   let h; ws.addChangeListener(ev => { if(ev.isUiEvent) return; clearTimeout(h); h = setTimeout(saveWs, 400); });
 }
+
+/* ================= 画面の大きさを変える (境界線をドラッグ) =================
+   ブロック / 3D の画面 / 課題 の大きさを、境界線のドラッグで変えられます。大きさは、ブラウザに覚えておきます。 */
+const LAYOUT_KEY = "mbot2sim.layout", LAYOUT_DEFAULT = {l:.62, s:.556};
+const lay = Object.assign({}, LAYOUT_DEFAULT);
+try{ const j = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null"); if(j && j.l > 0 && j.s > 0){ lay.l = clamp(+j.l, .15, .85); lay.s = clamp(+j.s, .15, .85); } }catch(e){}
+const narrowScreen = () => window.matchMedia("(max-width:900px)").matches;
+const SPLIT = 10, MIN_LEFT = 280, MIN_RIGHT = 320, MIN_STAGE = 120, MIN_PANEL = 110;
+function applyLayout(){
+  const b = document.body;
+  if(narrowScreen()){ b.style.removeProperty("--leftW"); b.style.removeProperty("--stageH"); return; }
+  const W = window.innerWidth, barH = document.getElementById("bar").offsetHeight, rightH = window.innerHeight - barH - SPLIT;
+  const left = clamp(lay.l * (W - SPLIT), MIN_LEFT, Math.max(MIN_LEFT, W - SPLIT - MIN_RIGHT));
+  const stage = clamp(lay.s * rightH, MIN_STAGE, Math.max(MIN_STAGE, rightH - MIN_PANEL));
+  b.style.setProperty("--leftW", Math.round(left) + "px");
+  b.style.setProperty("--stageH", Math.round(stage) + "px");
+}
+function saveLayout(){ try{ localStorage.setItem(LAYOUT_KEY, JSON.stringify(lay)); }catch(e){} }
+function setupSplit(el, axis){
+  const move = (clientX, clientY) => {
+    const W = window.innerWidth, barH = document.getElementById("bar").offsetHeight;
+    if(axis === "v") lay.l = clamp((clientX - SPLIT / 2) / (W - SPLIT), .1, .9);
+    else lay.s = clamp((clientY - barH - SPLIT / 2) / (window.innerHeight - barH - SPLIT), .1, .9);
+    applyLayout();
+  };
+  el.addEventListener("pointerdown", e => {
+    if(narrowScreen()) return;
+    el.setPointerCapture(e.pointerId); el.classList.add("drag"); document.body.classList.add("dragging"); e.preventDefault();
+  });
+  el.addEventListener("pointermove", e => { if(el.classList.contains("drag")) move(e.clientX, e.clientY); });
+  const end = e => { if(!el.classList.contains("drag")) return; el.classList.remove("drag"); document.body.classList.remove("dragging"); saveLayout(); };
+  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+  el.addEventListener("dblclick", () => { if(axis === "v") lay.l = LAYOUT_DEFAULT.l; else lay.s = LAYOUT_DEFAULT.s; applyLayout(); saveLayout(); });
+  el.addEventListener("keydown", e => {                                    // キーボードでも、2% ずつ動かせる
+    const k = e.key, step = e.shiftKey ? .08 : .02;
+    if(axis === "v" && (k === "ArrowLeft" || k === "ArrowRight")) lay.l = clamp(lay.l + (k === "ArrowRight" ? step : -step), .1, .9);
+    else if(axis === "h" && (k === "ArrowUp" || k === "ArrowDown")) lay.s = clamp(lay.s + (k === "ArrowDown" ? step : -step), .1, .9);
+    else return;
+    e.preventDefault(); applyLayout(); saveLayout();
+  });
+}
+setupSplit(document.getElementById("splitV"), "v");
+setupSplit(document.getElementById("splitH"), "h");
+window.addEventListener("resize", applyLayout);
+new ResizeObserver(applyLayout).observe(document.getElementById("bar"));
+applyLayout();
 
 /* ================= メインループ (動きは60Hz固定) ================= */
 let last = performance.now(), acc = 0, busy = false;
