@@ -1164,9 +1164,11 @@ function resize(){
 }
 new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
 
-function saveWs(){ try{ localStorage.setItem("mbot2sim.ws.v2", Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
+// ブロックの自動保存の名前に、コースの大きさを含める (大きさを変えたとき、前の大きさの数値が残らないようにする)
+const WS_KEY = "mbot2sim.ws." + W + "x" + H;
+function saveWs(){ try{ localStorage.setItem(WS_KEY, Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
 if(ws){
-  let saved = null; try{ saved = localStorage.getItem("mbot2sim.ws.v2"); }catch(e){}
+  let saved = null; try{ saved = localStorage.getItem(WS_KEY); }catch(e){}
   let loaded = false;
   if(saved){ try{ loadXml(saved); loaded = ws.getTopBlocks().length > 0; }catch(e){ loaded = false; } }
   if(!loaded) loadSample("line");
