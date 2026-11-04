@@ -212,7 +212,12 @@ const MEDIA = "https://cdn.jsdelivr.net/npm/scratch-blocks@0.1.0-prerelease.2022
 
 /* ================= 世界 (単位: cm) ================= */
 const W = 118.9, H = 84.1;              // コースは A0 サイズ (横 118.9cm x 縦 84.1cm)。画像をこの大きさに合わせて貼る
-const WHEEL_R = 3.2, TRACK = 11.5;      // 車輪の半径 / 左右の車輪の間隔
+// mBot2 の実寸 (cm): 奥行 17.5 / 幅 (タイヤなし) 9.2 / 幅 (タイヤあり) 13.1 / 高さ 8.7 / 超音波センサーの中心の高さ 6.5 (半径 0.5)
+const ROBOT = {len:17.5, bodyW:9.2, totalW:13.1, h:8.7, usH:6.5, usR:0.5};
+const WHEEL_W = (ROBOT.totalW - ROBOT.bodyW) / 2;      // タイヤ1本の幅 (1.95)
+const WHEEL_X = ROBOT.bodyW / 2 + WHEEL_W / 2;         // タイヤの中心の、左右の位置 (5.575)
+const FRONT = 10, REAR = ROBOT.len - FRONT;            // 車輪の軸から、前端・後端まで (軸の位置は仮定。前 10cm / 後 7.5cm)
+const WHEEL_R = 3.2, TRACK = WHEEL_X * 2;              // 車輪の半径 / 左右の車輪の間隔 (11.15)
 const RPM_TO_CMS = Math.PI * WHEEL_R * 2 / 60;   // 1 rpm あたりの cm/s
 const POWER_TO_RPM = 1.6;               // 動力 1% あたりの rpm (100% = 160 rpm)
 const SENS_F = 9;                       // 車輪の軸からセンサーまでの距離
@@ -308,19 +313,23 @@ function findLine(){
 const robot = new THREE.Group();
 const MAT = (c, o) => new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.5, metalness:.15}, o||{}));
 function part(geo, mat, x, y, z){ const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; robot.add(m); return m; }
-part(new THREE.BoxGeometry(9.6, 4.2, 15.5), MAT(0x2b9fd8), 0, 4.6, -1.8);
-part(new THREE.BoxGeometry(10.2, .7, 11), MAT(0x16597a), 0, 7.1, -0.5);
-part(new THREE.BoxGeometry(7.4, 1.2, 5.4), MAT(0x1a1f2b), 0, 8, 0.6);
-part(new THREE.BoxGeometry(5.4, .2, 3.2), MAT(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, 8.7, 0.6);
+const mid = (REAR - FRONT) / 2;                        // 車体の中心 (軸から見た前後の位置)
+part(new THREE.BoxGeometry(ROBOT.bodyW, 4, ROBOT.len), MAT(0x2b9fd8), 0, 3.4, mid);                 // 車体
+part(new THREE.BoxGeometry(ROBOT.bodyW + .6, .6, ROBOT.len - 3.5), MAT(0x16597a), 0, 5.7, mid);     // 上板
+part(new THREE.BoxGeometry(7.4, ROBOT.h - 6, 5.4), MAT(0x1a1f2b), 0, 6 + (ROBOT.h - 6) / 2, -1.5);  // CyberPi (上面が高さ 8.7cm)
+part(new THREE.BoxGeometry(5.4, .2, 3.2), MAT(0x7fe3ff, {emissive:0x2a8fb0, emissiveIntensity:.8}), 0, ROBOT.h + .05, -1.5);
 const wheels = [-1, 1].map(s => {
-  const w = part(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 2.4, 28), MAT(0x15181f, {roughness:.8}), s*5.75, WHEEL_R, 0);
+  const w = part(new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, WHEEL_W, 28), MAT(0x15181f, {roughness:.8}), s*WHEEL_X, WHEEL_R, 0);
   w.rotation.z = Math.PI/2;
-  const hub = part(new THREE.CylinderGeometry(1.2, 1.2, 2.6, 16), MAT(0xc9d2e3), s*5.75, WHEEL_R, 0);
+  const hub = part(new THREE.CylinderGeometry(1.2, 1.2, WHEEL_W + .2, 16), MAT(0xc9d2e3), s*WHEEL_X, WHEEL_R, 0);
   hub.rotation.z = Math.PI/2; return w;
 });
-part(new THREE.SphereGeometry(1, 16, 12), MAT(0xf0f0f0), 0, 1, 5.6);
-part(new THREE.BoxGeometry(7.6, .6, 1.6), MAT(0x2a3040), 0, 1.7, -9.2);
-part(new THREE.ConeGeometry(1.4, 3, 4), MAT(0xffffff), 0, 7.4, -6).rotation.x = -Math.PI/2;
+part(new THREE.SphereGeometry(1, 16, 12), MAT(0xf0f0f0), 0, 1, REAR - 1.5);                          // キャスター
+part(new THREE.BoxGeometry(7.6, .6, 1.6), MAT(0x2a3040), 0, 1.7, -(FRONT - .8));                      // クアッドRGBセンサー
+part(new THREE.ConeGeometry(1.4, 3, 4), MAT(0xffffff), 0, 6.6, -6.5).rotation.x = -Math.PI/2;       // 前向きの目印
+// 超音波センサー (前面。目の中心の高さ 6.5cm、半径 0.5cm)
+part(new THREE.BoxGeometry(8, 2.6, 1), MAT(0x2a3040), 0, ROBOT.usH, -(FRONT - .5));
+[-1, 1].forEach(s => { const e = part(new THREE.CylinderGeometry(ROBOT.usR, ROBOT.usR, 1.2, 20), MAT(0xdfe6f2, {metalness:.5}), s*2, ROBOT.usH, -FRONT + .1); e.rotation.x = Math.PI/2; });
 scene.add(robot);
 
 const sensMats = [], sensMeshes = SENS_OFF.map(() => {
@@ -374,7 +383,8 @@ function physics(){
   const r = rad(S.d + dd/2);
   S.d += dd;
   S.x += v * DT * Math.sin(r); S.y += v * DT * Math.cos(r);
-  S.x = clamp(S.x, -W/2 + 3, W/2 - 3); S.y = clamp(S.y, -H/2 + 3, H/2 - 3);
+  const M = FRONT - 1;                                               // コースの縁に、車体がはみ出さない余白
+  S.x = clamp(S.x, -W/2 + M, W/2 - M); S.y = clamp(S.y, -H/2 + M, H/2 - M);
   S.odo += Math.abs(v) * DT;
   S.simT += DT;
   readSensors();
@@ -1118,7 +1128,7 @@ document.getElementById("bExport").onclick = exportMblock;
 document.getElementById("bStop").onclick = () => { stopAll(); alive.clear(); threadCount = 0; setStatus(); };
 bManual.onclick = () => { if(isRunning()){ stopAll(); alive.clear(); threadCount = 0; } S.manual = !S.manual; setStatus(); };
 document.getElementById("bReset").onclick = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); };
-document.getElementById("startPose").onchange = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); };
+document.getElementById("startPose").onchange = () => { stopAll(); alive.clear(); threadCount = 0; resetPose(); setStatus(); saveWs(); };
 document.getElementById("bLoad").onclick = () => { stopAll(); alive.clear(); threadCount = 0; loadSample(document.getElementById("sample").value); setStatus(); };
 document.querySelectorAll("#btns button").forEach(b => b.addEventListener("click", () => fireButton(b.dataset.b)));
 
@@ -1166,11 +1176,17 @@ new ResizeObserver(resize).observe(document.getElementById("stage")); resize();
 
 // ブロックの自動保存の名前に、コースの大きさを含める (大きさを変えたとき、前の大きさの数値が残らないようにする)
 const WS_KEY = "mbot2sim.ws." + W + "x" + H;
-function saveWs(){ try{ localStorage.setItem(WS_KEY, Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); }catch(e){} }
+function saveWs(){ try{ localStorage.setItem(WS_KEY, Blockly.Xml.domToText(Blockly.Xml.workspaceToDom(ws))); localStorage.setItem(WS_KEY + ".pose", document.getElementById("startPose").value); }catch(e){} }
 if(ws){
   let saved = null; try{ saved = localStorage.getItem(WS_KEY); }catch(e){}
   let loaded = false;
-  if(saved){ try{ loadXml(saved); loaded = ws.getTopBlocks().length > 0; }catch(e){ loaded = false; } }
+  if(saved){
+    try{
+      loadXml(saved); loaded = ws.getTopBlocks().length > 0;
+      const pose = localStorage.getItem(WS_KEY + ".pose");            // スタート位置も、ブロックと一緒に戻す
+      if(pose === "line" || pose === "center"){ document.getElementById("startPose").value = pose; resetPose(); }
+    }catch(e){ loaded = false; }
+  }
   if(!loaded) loadSample("line");
   let h; ws.addChangeListener(ev => { if(ev.isUiEvent) return; clearTimeout(h); h = setTimeout(saveWs, 400); });
 }
